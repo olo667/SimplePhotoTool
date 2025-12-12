@@ -35,6 +35,11 @@ public class SettingsManager {
                     if (outputDir != null && !outputDir.isEmpty()) {
                         settings.setSnapshotOutputDirectory(outputDir);
                     }
+                    
+                    String filenamePattern = props.getProperty("filename.pattern");
+                    if (filenamePattern != null && !filenamePattern.isEmpty()) {
+                        settings.setFilenamePattern(filenamePattern);
+                    }
                 }
             }
 
@@ -76,6 +81,7 @@ public class SettingsManager {
         // Save general settings
         Properties props = new Properties();
         props.setProperty("snapshot.output.directory", settings.getSnapshotOutputDirectory());
+        props.setProperty("filename.pattern", settings.getFilenamePattern());
 
         try (OutputStream output = Files.newOutputStream(Paths.get(CONFIG_FILE))) {
             props.store(output, "SimplePhotoTool Settings");

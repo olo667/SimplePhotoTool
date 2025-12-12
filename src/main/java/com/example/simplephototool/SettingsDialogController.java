@@ -14,6 +14,9 @@ import java.io.IOException;
 public class SettingsDialogController {
     @FXML
     private TextField outputDirectoryField;
+    
+    @FXML
+    private TextField filenamePatternField;
 
     private Settings settings;
     private Stage dialogStage;
@@ -44,6 +47,7 @@ public class SettingsDialogController {
     public void setSettings(Settings settings) {
         this.settings = settings;
         outputDirectoryField.setText(settings.getSnapshotOutputDirectory());
+        filenamePatternField.setText(settings.getFilenamePattern());
     }
 
     /**
@@ -81,6 +85,7 @@ public class SettingsDialogController {
     @FXML
     private void handleSave() {
         settings.setSnapshotOutputDirectory(outputDirectoryField.getText());
+        settings.setFilenamePattern(filenamePatternField.getText());
         
         try {
             SettingsManager.saveSettings(settings);

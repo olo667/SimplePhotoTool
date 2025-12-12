@@ -10,7 +10,7 @@
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.example.simplephototool.SettingsDialogController"
-      spacing="15" prefWidth="500" prefHeight="200"
+      spacing="15" prefWidth="500" prefHeight="250"
       styleClass="settings-dialog">
 
     <padding>
@@ -24,6 +24,13 @@
             <TextField fx:id="outputDirectoryField" HBox.hgrow="ALWAYS" editable="false"/>
             <Button text="Browse..." onAction="#handleBrowse" styleClass="button"/>
         </HBox>
+    </VBox>
+
+    <!-- Filename Pattern Section -->
+    <VBox spacing="5">
+        <Label text="Filename Pattern:" styleClass="label-header"/>
+        <TextField fx:id="filenamePatternField" HBox.hgrow="ALWAYS" promptText="e.g. camera-{id}_{timestamp}.jpg"/>
+        <Label text="Available placeholders: {id} = camera name, {timestamp} = current time" style="-fx-font-size: 10px; -fx-text-fill: gray;"/>
     </VBox>
 
     <!-- Buttons -->

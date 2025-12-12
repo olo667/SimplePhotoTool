@@ -9,7 +9,7 @@
 
 <?import javafx.scene.control.RadioButton?>
 <HBox fx:id="rootPane" alignment="CENTER_LEFT" spacing="10.0"
-      xmlns="http://javafx.com/javafx/25"
+      xmlns="http://javafx.com/javafx/17"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.example.simplephototool.CameraListItemController">
     <padding>

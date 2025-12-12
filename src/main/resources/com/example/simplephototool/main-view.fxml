@@ -9,7 +9,7 @@
 <?import javafx.scene.layout.VBox?>
 
 
-<AnchorPane minHeight="480.0" minWidth="640.0" prefHeight="480.0" prefWidth="640.0" xmlns="http://javafx.com/javafx/25"
+<AnchorPane minHeight="480.0" minWidth="640.0" prefHeight="480.0" prefWidth="640.0" xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.simplephototool.MainController">
     <AnchorPane maxHeight="40.0" minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0"
                 AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
@@ -40,13 +40,13 @@
                 </AnchorPane>
             </AnchorPane>
             <AnchorPane>
-                <VBox alignment="CENTER" layoutX="89.0" layoutY="403.0" prefHeight="20.0" prefWidth="380.0"
-                      AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="0.0"
+                <VBox alignment="CENTER" layoutX="89.0" layoutY="403.0" prefHeight="40.0" prefWidth="380.0"
+                      AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
                       AnchorPane.rightAnchor="0.0">
                     <Button maxHeight="-Infinity" minHeight="-Infinity" mnemonicParsing="false"
-                            prefHeight="30.0" text="Take snapshot (Enter)"/>
+                            prefHeight="30.0" text="Take snapshot (Enter)" onAction="#onTakeSnapshot"/>
                 </VBox>
-                <AnchorPane AnchorPane.topAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="10.0">
+                <AnchorPane AnchorPane.topAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.bottomAnchor="50.0" AnchorPane.leftAnchor="10.0">
                     <ImageView fx:id="previewImageView" fitWidth="380.0" preserveRatio="true" />
                 </AnchorPane>
             </AnchorPane>

@@ -120,6 +120,43 @@ public class MainController {
         }
     }
 
+    @FXML
+    public void onTakeSnapshot() {
+        // Temporarily stop preview if running
+        boolean wasPreviewRunning = previewService != null && previewService.isRunning();
+        String activeDeviceId = null;
+        
+        if (wasPreviewRunning) {
+            activeDeviceId = previewService.getCurrentDeviceId();
+            previewService.stopPreview();
+            // Give the device time to release
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        
+        int count = SnapshotService.captureSnapshots(cameras, settings);
+        System.out.println("Captured " + count + " snapshots.");
+        
+        // Restart preview if it was running
+        if (wasPreviewRunning && activeDeviceId != null) {
+            final String deviceToRestart = activeDeviceId;
+            // Delay restart to ensure snapshot is complete
+            new Thread(() -> {
+                try {
+                    Thread.sleep(500);
+                    javafx.application.Platform.runLater(() -> {
+                        previewService.startPreview(deviceToRestart, previewImageView);
+                    });
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }).start();
+        }
+    }
+
     public void stopPreview() {
         if (previewService != null) {
             previewService.stopPreview();

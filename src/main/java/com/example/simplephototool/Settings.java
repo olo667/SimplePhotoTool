@@ -8,10 +8,12 @@ import java.util.List;
  */
 public class Settings {
     private String snapshotOutputDirectory;
+    private String filenamePattern;
     private List<Camera> cameras;
 
     public Settings() {
         this.snapshotOutputDirectory = System.getProperty("user.home") + "/Pictures/SimplePhotoTool";
+        this.filenamePattern = "camera-{id}_{timestamp}.jpg";
         this.cameras = new ArrayList<>();
     }
 
@@ -21,6 +23,14 @@ public class Settings {
 
     public void setSnapshotOutputDirectory(String snapshotOutputDirectory) {
         this.snapshotOutputDirectory = snapshotOutputDirectory;
+    }
+
+    public String getFilenamePattern() {
+        return filenamePattern;
+    }
+
+    public void setFilenamePattern(String filenamePattern) {
+        this.filenamePattern = filenamePattern;
     }
 
     public List<Camera> getCameras() {

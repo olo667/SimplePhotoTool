@@ -1,41 +1,64 @@
 package com.example.simplephototool;
 
-import java.io.BufferedReader;
+import com.github.sarxos.webcam.Webcam;
+
 import java.io.File;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Utility class to detect available camera devices on the system.
+ * Uses platform-specific detection methods.
  */
 public class CameraDeviceDetector {
 
     /**
      * Detects available camera devices on the system.
-     * Currently supports Linux (via /dev/video*) and attempts to get device names.
+     * Works on Windows, Linux, and macOS.
      */
     public static List<CameraDevice> detectDevices() {
         List<CameraDevice> devices = new ArrayList<>();
         
         String os = System.getProperty("os.name").toLowerCase();
         
+        // Try webcam-capture first (works best on Windows)
+        try {
+            List<Webcam> webcams = Webcam.getWebcams();
+            
+            for (int i = 0; i < webcams.size(); i++) {
+                Webcam webcam = webcams.get(i);
+                String deviceId = String.valueOf(i);
+                String deviceName = webcam.getName();
+                
+                devices.add(new CameraDevice(deviceId, deviceName));
+            }
+            
+            if (!devices.isEmpty()) {
+                System.out.println("Detected " + devices.size() + " cameras using webcam-capture");
+                return devices;
+            }
+        } catch (Exception e) {
+            System.out.println("webcam-capture failed, trying platform-specific detection: " + e.getMessage());
+        }
+        
+        // Fallback to platform-specific detection
         if (os.contains("linux")) {
             devices = detectLinuxDevices();
         } else if (os.contains("windows")) {
-            devices = detectWindowsDevices();
+            // Already tried webcam-capture above
+            devices.add(new CameraDevice("0", "Default Camera"));
         } else if (os.contains("mac")) {
-            devices = detectMacDevices();
+            devices.add(new CameraDevice("0", "Default Camera"));
         }
         
-        // If no devices found, add a placeholder
+        // If still no devices found, add a placeholder
         if (devices.isEmpty()) {
-            devices.add(new CameraDevice("default", "Default Camera"));
+            devices.add(new CameraDevice("0", "Default Camera"));
         }
         
         return devices;
     }
-
+    
     private static List<CameraDevice> detectLinuxDevices() {
         List<CameraDevice> devices = new ArrayList<>();
         
@@ -46,97 +69,13 @@ public class CameraDeviceDetector {
         if (videoDevices != null) {
             for (File device : videoDevices) {
                 String devicePath = device.getAbsolutePath();
-                String deviceName = getLinuxDeviceName(devicePath);
-                if (deviceName == null) {
-                    deviceName = device.getName();
-                }
-                devices.add(new CameraDevice(devicePath, deviceName + " (" + device.getName() + ")"));
+                String deviceName = device.getName();
+                
+                devices.add(new CameraDevice(devicePath, "Camera " + deviceName));
             }
         }
         
-        return devices;
-    }
-
-    private static String getLinuxDeviceName(String devicePath) {
-        try {
-            // Try to get device name using v4l2-ctl
-            ProcessBuilder pb = new ProcessBuilder("v4l2-ctl", "--device=" + devicePath, "--info");
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (line.contains("Card type")) {
-                        int colonIndex = line.indexOf(':');
-                        if (colonIndex != -1) {
-                            return line.substring(colonIndex + 1).trim();
-                        }
-                    }
-                }
-            }
-            process.waitFor();
-        } catch (Exception e) {
-            // v4l2-ctl not available or error occurred
-        }
-        return null;
-    }
-
-    private static List<CameraDevice> detectWindowsDevices() {
-        List<CameraDevice> devices = new ArrayList<>();
-        
-        // On Windows, we can try to use PowerShell to list devices
-        try {
-            ProcessBuilder pb = new ProcessBuilder("powershell", "-Command",
-                "Get-PnpDevice -Class Camera -Status OK | Select-Object -ExpandProperty FriendlyName");
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                int index = 0;
-                while ((line = reader.readLine()) != null) {
-                    line = line.trim();
-                    if (!line.isEmpty()) {
-                        devices.add(new CameraDevice(String.valueOf(index), line));
-                        index++;
-                    }
-                }
-            }
-            process.waitFor();
-        } catch (Exception e) {
-            // PowerShell not available or error occurred
-        }
-        
-        return devices;
-    }
-
-    private static List<CameraDevice> detectMacDevices() {
-        List<CameraDevice> devices = new ArrayList<>();
-        
-        // On macOS, we can try to use system_profiler
-        try {
-            ProcessBuilder pb = new ProcessBuilder("system_profiler", "SPCameraDataType");
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                int index = 0;
-                while ((line = reader.readLine()) != null) {
-                    // Look for camera names (they appear after indentation)
-                    if (line.matches("^\\s{4}\\S.*:$")) {
-                        String name = line.trim().replace(":", "");
-                        devices.add(new CameraDevice(String.valueOf(index), name));
-                        index++;
-                    }
-                }
-            }
-            process.waitFor();
-        } catch (Exception e) {
-            // system_profiler not available or error occurred
-        }
-        
+        System.out.println("Detected " + devices.size() + " Linux video devices");
         return devices;
     }
 }
