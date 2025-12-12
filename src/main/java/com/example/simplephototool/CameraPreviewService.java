@@ -1,6 +1,5 @@
 package com.example.simplephototool;
 
-import com.github.sarxos.webcam.Webcam;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.ImageView;
@@ -9,18 +8,16 @@ import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 
 import java.awt.image.BufferedImage;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Service to preview camera frames using platform-appropriate backend.
- * Uses JavaCV for Linux (/dev/video*) and webcam-capture for Windows.
+ * Service to preview camera frames using JavaCV across all platforms.
+ * Supports Linux (v4l2), Windows (DirectShow), and macOS (AVFoundation).
  */
 public class CameraPreviewService {
     private Thread worker;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private String currentDeviceId;
-    private Webcam webcam;
     private FFmpegFrameGrabber grabber;
 
     public void startPreview(String deviceId, ImageView target) {
@@ -28,57 +25,26 @@ public class CameraPreviewService {
 
         this.currentDeviceId = deviceId;
         running.set(true);
-        
-        // Determine which backend to use based on deviceId
-        if (deviceId.startsWith("/dev/")) {
-            startJavaCVPreview(deviceId, target);
-        } else {
-            startWebcamPreview(deviceId, target);
-        }
-    }
-    
-    private void startWebcamPreview(String deviceId, ImageView target) {
-        worker = new Thread(() -> {
-            try {
-                int index = Integer.parseInt(deviceId);
-                List<Webcam> webcams = Webcam.getWebcams();
-                
-                if (index >= 0 && index < webcams.size()) {
-                    webcam = webcams.get(index);
-                    
-                    if (!webcam.open()) {
-                        System.err.println("Failed to open webcam: " + webcam.getName());
-                        return;
-                    }
-
-                    while (running.get()) {
-                        BufferedImage image = webcam.getImage();
-                        if (image != null) {
-                            javafx.scene.image.Image fxImage = SwingFXUtils.toFXImage(image, null);
-                            Platform.runLater(() -> target.setImage(fxImage));
-                        }
-                        Thread.sleep(33); // ~30 FPS
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("Error in webcam preview: " + e.getMessage());
-                e.printStackTrace();
-            } finally {
-                if (webcam != null && webcam.isOpen()) {
-                    webcam.close();
-                }
-            }
-        });
-        worker.setDaemon(true);
-        worker.start();
+        startJavaCVPreview(deviceId, target);
     }
     
     private void startJavaCVPreview(String deviceId, ImageView target) {
         worker = new Thread(() -> {
             try {
+                String os = System.getProperty("os.name").toLowerCase();
+                
                 grabber = new FFmpegFrameGrabber(deviceId);
-                grabber.setFormat("video4linux2");
-                grabber.setOption("-framerate", "30");
+                
+                // Set platform-specific format
+                if (os.contains("linux")) {
+                    grabber.setFormat("video4linux2");
+                } else if (os.contains("windows")) {
+                    grabber.setFormat("dshow");
+                } else if (os.contains("mac")) {
+                    grabber.setFormat("avfoundation");
+                }
+                
+                grabber.setOption("framerate", "30");
                 grabber.start();
 
                 Java2DFrameConverter converter = new Java2DFrameConverter();
@@ -114,10 +80,6 @@ public class CameraPreviewService {
                 worker.join(500);
             } catch (InterruptedException ignored) {}
             worker = null;
-        }
-        if (webcam != null && webcam.isOpen()) {
-            webcam.close();
-            webcam = null;
         }
         if (grabber != null) {
             try {

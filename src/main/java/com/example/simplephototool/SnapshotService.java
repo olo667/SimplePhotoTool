@@ -1,6 +1,5 @@
 package com.example.simplephototool;
 
-import com.github.sarxos.webcam.Webcam;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
@@ -18,7 +17,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Service for capturing snapshots from cameras using platform-appropriate backend.
+ * Service for capturing snapshots from cameras using JavaCV on all platforms.
  */
 public class SnapshotService {
     
@@ -75,65 +74,25 @@ public class SnapshotService {
      * @return true if successful
      */
     private static boolean captureSnapshot(Camera camera, Settings settings) {
-        String deviceId = camera.getDeviceId();
-        
-        // Use appropriate backend based on device ID
-        if (deviceId.startsWith("/dev/")) {
-            return captureSnapshotJavaCV(camera, settings);
-        } else {
-            return captureSnapshotWebcam(camera, settings);
-        }
-    }
-    
-    private static boolean captureSnapshotWebcam(Camera camera, Settings settings) {
-        Webcam webcam = null;
-        try {
-            int index = Integer.parseInt(camera.getDeviceId());
-            List<Webcam> webcams = Webcam.getWebcams();
-            
-            if (index < 0 || index >= webcams.size()) {
-                System.err.println("Invalid camera index: " + index);
-                return false;
-            }
-            
-            webcam = webcams.get(index);
-            
-            if (!webcam.open()) {
-                System.err.println("Failed to open webcam: " + webcam.getName());
-                return false;
-            }
-            
-            BufferedImage image = webcam.getImage();
-            if (image == null) {
-                System.err.println("Failed to capture image from " + camera.getName());
-                return false;
-            }
-
-            String filename = generateFilename(camera, settings.getFilenamePattern());
-            String filepath = settings.getSnapshotOutputDirectory() + File.separator + filename;
-
-            File outputFile = new File(filepath);
-            ImageIO.write(image, "jpg", outputFile);
-            
-            System.out.println("Snapshot saved: " + filepath);
-            return true;
-            
-        } catch (Exception e) {
-            System.err.println("Error capturing webcam snapshot from " + camera.getName() + ": " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        } finally {
-            if (webcam != null && webcam.isOpen()) {
-                webcam.close();
-            }
-        }
+        return captureSnapshotJavaCV(camera, settings);
     }
     
     private static boolean captureSnapshotJavaCV(Camera camera, Settings settings) {
         FFmpegFrameGrabber grabber = null;
         try {
+            String os = System.getProperty("os.name").toLowerCase();
+            
             grabber = new FFmpegFrameGrabber(camera.getDeviceId());
-            grabber.setFormat("video4linux2");
+            
+            // Set platform-specific format
+            if (os.contains("linux")) {
+                grabber.setFormat("video4linux2");
+            } else if (os.contains("windows")) {
+                grabber.setFormat("dshow");
+            } else if (os.contains("mac")) {
+                grabber.setFormat("avfoundation");
+            }
+            
             grabber.start();
 
             // Grab a few frames to let camera stabilize
