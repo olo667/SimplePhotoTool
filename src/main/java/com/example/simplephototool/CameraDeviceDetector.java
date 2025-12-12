@@ -1,8 +1,15 @@
 package com.example.simplephototool;
 
+import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.FFmpegLogCallback;
+
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Utility class to detect available camera devices on the system.
@@ -58,10 +65,38 @@ public class CameraDeviceDetector {
     private static List<CameraDevice> detectWindowsDevices() {
         List<CameraDevice> devices = new ArrayList<>();
         
-        // On Windows, JavaCV uses DirectShow
-        // DirectShow requires "video=" prefix for device names
-        for (int i = 0; i < 5; i++) {
-            devices.add(new CameraDevice("video=" + i, "Camera " + i));
+        try {
+            // Use Media Foundation (modern Windows API)
+            ProcessBuilder pb = new ProcessBuilder(
+                "ffmpeg", "-list_devices", "true", "-f", "mf", "-i", "dummy"
+            );
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            Pattern devicePattern = Pattern.compile("\\[.*?\\]\\s+\"([^\"]+)\"");
+            
+            while ((line = reader.readLine()) != null) {
+                if (line.contains("video")) {
+                    Matcher matcher = devicePattern.matcher(line);
+                    if (matcher.find()) {
+                        String deviceName = matcher.group(1);
+                        devices.add(new CameraDevice(deviceName, deviceName));
+                    }
+                }
+            }
+            
+            process.waitFor();
+            reader.close();
+            
+        } catch (Exception e) {
+            System.err.println("Failed to enumerate Windows devices: " + e.getMessage());
+            devices.add(new CameraDevice("0", "Default Camera"));
+        }
+        
+        if (devices.isEmpty()) {
+            devices.add(new CameraDevice("0", "Default Camera"));
         }
         
         return devices;

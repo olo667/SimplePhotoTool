@@ -32,25 +32,41 @@ public class CameraPreviewService {
         worker = new Thread(() -> {
             try {
                 String os = System.getProperty("os.name").toLowerCase();
+                String grabberDevice = deviceId;
                 
                 // Set platform-specific format
                 if (os.contains("linux")) {
-                    grabber = new FFmpegFrameGrabber(deviceId);
+                    grabber = new FFmpegFrameGrabber(grabberDevice);
                     grabber.setFormat("video4linux2");
-                    grabber.setOption("framerate", "30");
                 } else if (os.contains("windows")) {
-                    // DirectShow on Windows - deviceId should be "video=X" format
+                    // Media Foundation (modern Windows API)
                     grabber = new FFmpegFrameGrabber(deviceId);
-                    grabber.setFormat("dshow");
+                    grabber.setFormat("mf");
                     grabber.setOption("framerate", "30");
+                    grabber.start();
+                    
+                    Java2DFrameConverter converter = new Java2DFrameConverter();
+                    while (running.get()) {
+                        Frame frame = grabber.grabImage();
+                        if (frame == null) {
+                            Thread.sleep(10);
+                            continue;
+                        }
+                        BufferedImage buffered = converter.getBufferedImage(frame);
+                        if (buffered != null) {
+                            javafx.scene.image.Image fxImage = SwingFXUtils.toFXImage(buffered, null);
+                            Platform.runLater(() -> target.setImage(fxImage));
+                        }
+                    }
+                    return;
                 } else if (os.contains("mac")) {
-                    grabber = new FFmpegFrameGrabber(deviceId);
+                    grabber = new FFmpegFrameGrabber(grabberDevice);
                     grabber.setFormat("avfoundation");
-                    grabber.setOption("framerate", "30");
                 } else {
-                    grabber = new FFmpegFrameGrabber(deviceId);
+                    grabber = new FFmpegFrameGrabber(grabberDevice);
                 }
                 
+                grabber.setOption("framerate", "30");
                 grabber.start();
 
                 Java2DFrameConverter converter = new Java2DFrameConverter();

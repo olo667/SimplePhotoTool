@@ -81,19 +81,25 @@ public class SnapshotService {
         FFmpegFrameGrabber grabber = null;
         try {
             String os = System.getProperty("os.name").toLowerCase();
-            
-            grabber = new FFmpegFrameGrabber(camera.getDeviceId());
+            String deviceId = camera.getDeviceId();
+            String grabberDevice = deviceId;
             
             // Set platform-specific format
             if (os.contains("linux")) {
+                grabber = new FFmpegFrameGrabber(grabberDevice);
                 grabber.setFormat("video4linux2");
             } else if (os.contains("windows")) {
-                grabber.setFormat("dshow");
+                // Media Foundation (modern Windows API)
+                grabber = new FFmpegFrameGrabber(deviceId);
+                grabber.setFormat("mf");
+                grabber.start();
             } else if (os.contains("mac")) {
+                grabber = new FFmpegFrameGrabber(grabberDevice);
                 grabber.setFormat("avfoundation");
+            } else {
+                grabber = new FFmpegFrameGrabber(grabberDevice);
+                grabber.start();
             }
-            
-            grabber.start();
 
             // Grab a few frames to let camera stabilize
             for (int i = 0; i < 5; i++) {
