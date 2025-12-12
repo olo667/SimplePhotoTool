@@ -129,32 +129,39 @@ public class MainController {
         if (wasPreviewRunning) {
             activeDeviceId = previewService.getCurrentDeviceId();
             previewService.stopPreview();
-            // Give the device time to release
-            try {
-                Thread.sleep(200);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
         }
         
-        int count = SnapshotService.captureSnapshots(cameras, settings);
-        System.out.println("Captured " + count + " snapshots.");
+        // Run snapshot capture in background thread
+        final String deviceToRestart = activeDeviceId;
+        final boolean shouldRestart = wasPreviewRunning;
         
-        // Restart preview if it was running
-        if (wasPreviewRunning && activeDeviceId != null) {
-            final String deviceToRestart = activeDeviceId;
-            // Delay restart to ensure snapshot is complete
-            new Thread(() -> {
+        new Thread(() -> {
+            // Give the device time to release
+            if (shouldRestart) {
                 try {
-                    Thread.sleep(500);
-                    javafx.application.Platform.runLater(() -> {
-                        previewService.startPreview(deviceToRestart, previewImageView);
-                    });
+                    Thread.sleep(200);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                    return;
                 }
-            }).start();
-        }
+            }
+            
+            int count = SnapshotService.captureSnapshots(cameras, settings);
+            System.out.println("Captured " + count + " snapshots.");
+            
+            // Restart preview if it was running
+            if (shouldRestart && deviceToRestart != null) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                javafx.application.Platform.runLater(() -> {
+                    previewService.startPreview(deviceToRestart, previewImageView);
+                });
+            }
+        }).start();
     }
 
     public void stopPreview() {

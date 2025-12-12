@@ -12,64 +12,33 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Service to preview camera frames using JavaCV across all platforms.
- * Supports Linux (v4l2), Windows (DirectShow), and macOS (AVFoundation).
+ * Uses Strategy pattern for platform-specific configuration.
  */
 public class CameraPreviewService {
     private Thread worker;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private String currentDeviceId;
     private FFmpegFrameGrabber grabber;
+    private final CameraStrategy strategy;
+
+    public CameraPreviewService() {
+        this.strategy = CameraStrategyFactory.getStrategy();
+    }
 
     public void startPreview(String deviceId, ImageView target) {
         stopPreview();
 
         this.currentDeviceId = deviceId;
         running.set(true);
-        startJavaCVPreview(deviceId, target);
-    }
-    
-    private void startJavaCVPreview(String deviceId, ImageView target) {
+        
         worker = new Thread(() -> {
+            Java2DFrameConverter converter = null;
             try {
-                String os = System.getProperty("os.name").toLowerCase();
-                String grabberDevice = deviceId;
-                
-                // Set platform-specific format
-                if (os.contains("linux")) {
-                    grabber = new FFmpegFrameGrabber(grabberDevice);
-                    grabber.setFormat("video4linux2");
-                } else if (os.contains("windows")) {
-                    // Media Foundation (modern Windows API)
-                    grabber = new FFmpegFrameGrabber(deviceId);
-                    grabber.setFormat("mf");
-                    grabber.setOption("framerate", "30");
-                    grabber.start();
-                    
-                    Java2DFrameConverter converter = new Java2DFrameConverter();
-                    while (running.get()) {
-                        Frame frame = grabber.grabImage();
-                        if (frame == null) {
-                            Thread.sleep(10);
-                            continue;
-                        }
-                        BufferedImage buffered = converter.getBufferedImage(frame);
-                        if (buffered != null) {
-                            javafx.scene.image.Image fxImage = SwingFXUtils.toFXImage(buffered, null);
-                            Platform.runLater(() -> target.setImage(fxImage));
-                        }
-                    }
-                    return;
-                } else if (os.contains("mac")) {
-                    grabber = new FFmpegFrameGrabber(grabberDevice);
-                    grabber.setFormat("avfoundation");
-                } else {
-                    grabber = new FFmpegFrameGrabber(grabberDevice);
-                }
-                
-                grabber.setOption("framerate", "30");
+                grabber = new FFmpegFrameGrabber(deviceId);
+                strategy.configureGrabber(grabber, deviceId);
                 grabber.start();
 
-                Java2DFrameConverter converter = new Java2DFrameConverter();
+                converter = new Java2DFrameConverter();
                 while (running.get()) {
                     Frame frame = grabber.grabImage();
                     if (frame == null) {
@@ -83,9 +52,14 @@ public class CameraPreviewService {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Error in JavaCV preview: " + e.getMessage());
+                System.err.println("Error in camera preview: " + e.getMessage());
                 e.printStackTrace();
             } finally {
+                if (converter != null) {
+                    try {
+                        converter.close();
+                    } catch (Exception ignored) {}
+                }
                 try {
                     if (grabber != null) grabber.stop();
                 } catch (Exception ignored) {}

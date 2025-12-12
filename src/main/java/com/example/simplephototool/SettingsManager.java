@@ -52,7 +52,10 @@ public class SettingsManager {
                 for (String line : lines) {
                     String[] parts = line.split("\\|");
                     if (parts.length >= 2) {
-                        Camera camera = new Camera(parts[0], parts[1]);
+                        String name = parts[0];
+                        String deviceId = parts[1];
+                        boolean active = parts.length >= 3 ? Boolean.parseBoolean(parts[2]) : true;
+                        Camera camera = new Camera(name, deviceId, active);
                         cameras.add(camera);
                     }
                 }
@@ -90,7 +93,7 @@ public class SettingsManager {
         // Save cameras
         List<String> lines = new ArrayList<>();
         for (Camera camera : settings.getCameras()) {
-            lines.add(camera.getName() + "|" + camera.getDeviceId());
+            lines.add(camera.getName() + "|" + camera.getDeviceId() + "|" + camera.isActive());
         }
         Files.write(Paths.get(CAMERA_FILE), lines);
     }

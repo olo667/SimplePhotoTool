@@ -18,8 +18,11 @@ import java.util.stream.Collectors;
 
 /**
  * Service for capturing snapshots from cameras using JavaCV on all platforms.
+ * Uses Strategy pattern for platform-specific configuration.
  */
 public class SnapshotService {
+    
+    private static final CameraStrategy strategy = CameraStrategyFactory.getStrategy();
     
     /**
      * Captures snapshots from all active cameras.
@@ -79,27 +82,13 @@ public class SnapshotService {
     
     private static boolean captureSnapshotJavaCV(Camera camera, Settings settings) {
         FFmpegFrameGrabber grabber = null;
+        Java2DFrameConverter converter = null;
         try {
-            String os = System.getProperty("os.name").toLowerCase();
             String deviceId = camera.getDeviceId();
-            String grabberDevice = deviceId;
             
-            // Set platform-specific format
-            if (os.contains("linux")) {
-                grabber = new FFmpegFrameGrabber(grabberDevice);
-                grabber.setFormat("video4linux2");
-            } else if (os.contains("windows")) {
-                // Media Foundation (modern Windows API)
-                grabber = new FFmpegFrameGrabber(deviceId);
-                grabber.setFormat("mf");
-                grabber.start();
-            } else if (os.contains("mac")) {
-                grabber = new FFmpegFrameGrabber(grabberDevice);
-                grabber.setFormat("avfoundation");
-            } else {
-                grabber = new FFmpegFrameGrabber(grabberDevice);
-                grabber.start();
-            }
+            grabber = new FFmpegFrameGrabber(deviceId);
+            strategy.configureGrabber(grabber, deviceId);
+            grabber.start();
 
             // Grab a few frames to let camera stabilize
             for (int i = 0; i < 5; i++) {
@@ -115,7 +104,7 @@ public class SnapshotService {
             String filename = generateFilename(camera, settings.getFilenamePattern());
             String filepath = settings.getSnapshotOutputDirectory() + File.separator + filename;
 
-            Java2DFrameConverter converter = new Java2DFrameConverter();
+            converter = new Java2DFrameConverter();
             BufferedImage image = converter.getBufferedImage(frame);
             
             File outputFile = new File(filepath);
@@ -125,10 +114,15 @@ public class SnapshotService {
             return true;
             
         } catch (Exception e) {
-            System.err.println("Error capturing JavaCV snapshot from " + camera.getName() + ": " + e.getMessage());
+            System.err.println("Error capturing snapshot from " + camera.getName() + ": " + e.getMessage());
             e.printStackTrace();
             return false;
         } finally {
+            if (converter != null) {
+                try {
+                    converter.close();
+                } catch (Exception ignored) {}
+            }
             if (grabber != null) {
                 try {
                     grabber.stop();
