@@ -33,18 +33,24 @@ public class CameraPreviewService {
             try {
                 String os = System.getProperty("os.name").toLowerCase();
                 
-                grabber = new FFmpegFrameGrabber(deviceId);
-                
                 // Set platform-specific format
                 if (os.contains("linux")) {
+                    grabber = new FFmpegFrameGrabber(deviceId);
                     grabber.setFormat("video4linux2");
+                    grabber.setOption("framerate", "30");
                 } else if (os.contains("windows")) {
+                    // DirectShow on Windows - deviceId should be "video=X" format
+                    grabber = new FFmpegFrameGrabber(deviceId);
                     grabber.setFormat("dshow");
+                    grabber.setOption("framerate", "30");
                 } else if (os.contains("mac")) {
+                    grabber = new FFmpegFrameGrabber(deviceId);
                     grabber.setFormat("avfoundation");
+                    grabber.setOption("framerate", "30");
+                } else {
+                    grabber = new FFmpegFrameGrabber(deviceId);
                 }
                 
-                grabber.setOption("framerate", "30");
                 grabber.start();
 
                 Java2DFrameConverter converter = new Java2DFrameConverter();

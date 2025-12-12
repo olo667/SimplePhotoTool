@@ -58,10 +58,10 @@ public class CameraDeviceDetector {
     private static List<CameraDevice> detectWindowsDevices() {
         List<CameraDevice> devices = new ArrayList<>();
         
-        // On Windows, JavaCV uses DirectShow with numeric indices
-        // Probe for up to 10 cameras
-        for (int i = 0; i < 10; i++) {
-            devices.add(new CameraDevice(String.valueOf(i), "Camera " + i));
+        // On Windows, JavaCV uses DirectShow
+        // DirectShow requires "video=" prefix for device names
+        for (int i = 0; i < 5; i++) {
+            devices.add(new CameraDevice("video=" + i, "Camera " + i));
         }
         
         return devices;
