@@ -1,6 +1,6 @@
 package com.example.simplephototool;
 
-import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.FrameGrabber;
 
 import java.util.List;
 
@@ -17,13 +17,13 @@ public interface CameraStrategy {
     List<CameraDevice> detectDevices();
     
     /**
-     * Configures a frame grabber for the platform.
-     * 
-     * @param grabber The frame grabber to configure
+     * Creates and configures a frame grabber for the platform.
+     *
      * @param deviceId The device identifier
+     * @return Configured FrameGrabber ready to start
      */
-    void configureGrabber(FFmpegFrameGrabber grabber, String deviceId);
-    
+    FrameGrabber createGrabber(String deviceId);
+
     /**
      * Gets the platform name.
      * 

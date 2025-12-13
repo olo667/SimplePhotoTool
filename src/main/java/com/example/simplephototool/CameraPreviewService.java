@@ -3,8 +3,8 @@ package com.example.simplephototool;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.ImageView;
-import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.FrameGrabber;
 import org.bytedeco.javacv.Java2DFrameConverter;
 
 import java.awt.image.BufferedImage;
@@ -18,7 +18,7 @@ public class CameraPreviewService {
     private Thread worker;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private String currentDeviceId;
-    private FFmpegFrameGrabber grabber;
+    private FrameGrabber grabber;
     private final CameraStrategy strategy;
 
     public CameraPreviewService() {
@@ -34,20 +34,14 @@ public class CameraPreviewService {
         worker = new Thread(() -> {
             Java2DFrameConverter converter = null;
             try {
-                // For Windows dshow format, prepend "video=" to the device name
-                String grabberInput = deviceId;
-                if (strategy.getPlatformName().equals("Windows")) {
-                    grabberInput = "video=" + deviceId;
-                }
-                
-                grabber = new FFmpegFrameGrabber(grabberInput);
-                strategy.configureGrabber(grabber, deviceId);
+                // Use strategy to create platform-specific grabber
+                grabber = strategy.createGrabber(deviceId);
                 grabber.start();
 
                 converter = new Java2DFrameConverter();
                 while (running.get()) {
-                    Frame frame = grabber.grabImage();
-                    if (frame == null) {
+                    Frame frame = grabber.grab();
+                    if (frame == null || frame.image == null) {
                         Thread.sleep(10);
                         continue;
                     }

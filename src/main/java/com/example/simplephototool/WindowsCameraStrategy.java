@@ -1,6 +1,7 @@
 package com.example.simplephototool;
 
-import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.FrameGrabber;
+import org.bytedeco.javacv.OpenCVFrameGrabber;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -10,8 +11,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Windows-specific camera strategy using Media Foundation (msmf).
- * Media Foundation is the modern API for Windows 10 and 11, replacing deprecated DirectShow.
+ * Windows-specific camera strategy using OpenCV for better compatibility.
+ * Uses device indices for reliable camera access.
  */
 public class WindowsCameraStrategy implements CameraStrategy {
     
@@ -19,15 +20,10 @@ public class WindowsCameraStrategy implements CameraStrategy {
     public List<CameraDevice> detectDevices() {
         List<CameraDevice> devices = new ArrayList<>();
         
-        // Try Media Foundation first (Windows 10/11)
-        devices.addAll(detectMediaFoundationDevices());
-        
-        // Fallback to DirectShow if Media Foundation fails (older Windows or specific hardware)
-        if (devices.isEmpty()) {
-            devices.addAll(detectDirectShowDevices());
-        }
-        
-        // If all detection methods fail, add default camera
+        // Detect DirectShow video devices
+        devices.addAll(detectDirectShowDevices());
+
+        // If detection fails, add default camera by index
         if (devices.isEmpty()) {
             devices.add(new CameraDevice("0", "Default Camera"));
         }
@@ -36,101 +32,39 @@ public class WindowsCameraStrategy implements CameraStrategy {
     }
     
     /**
-     * Detects cameras using Media Foundation (modern Windows 10/11 API).
-     */
-    private List<CameraDevice> detectMediaFoundationDevices() {
-        List<CameraDevice> devices = new ArrayList<>();
-        
-        try {
-            // Use FFmpeg to list Media Foundation devices
-            ProcessBuilder pb = new ProcessBuilder(
-                "ffmpeg", "-list_devices", "true", "-f", "dshow", "-i", "dummy"
-            );
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            // Pattern to match both device name and optional alternative name
-            // Example: [dshow @ ...] "USB Camera" (video)
-            //          [dshow @ ...] "USB Camera"
-            //          [dshow @ ...] "@device_pnp_\\\\?\\usb#vid_..." (alternative name)
-            Pattern devicePattern = Pattern.compile("\\[.*?\\]\\s+\"([^\"]+)\"");
-            Pattern altNamePattern = Pattern.compile("Alternative name\\s+\"([^\"]+)\"");
-            
-            String currentDeviceName = null;
-            
-            while ((line = reader.readLine()) != null) {
-                // Look for video devices
-                if (line.contains("DirectShow video devices") || line.contains("video devices")) {
-                    continue;
-                }
-                
-                Matcher deviceMatcher = devicePattern.matcher(line);
-                if (deviceMatcher.find() && line.contains("video")) {
-                    currentDeviceName = deviceMatcher.group(1);
-                    // Store device with name as both ID and display (will be updated if alt name found)
-                    devices.add(new CameraDevice(currentDeviceName, currentDeviceName));
-                } else if (currentDeviceName != null && line.contains("Alternative name")) {
-                    // Found alternative name for the previous device
-                    Matcher altMatcher = altNamePattern.matcher(line);
-                    if (altMatcher.find()) {
-                        String altName = altMatcher.group(1);
-                        // Update the last added device to use alternative name as ID
-                        devices.remove(devices.size() - 1);
-                        devices.add(new CameraDevice(altName, currentDeviceName));
-                    }
-                    currentDeviceName = null;
-                }
-            }
-            
-            process.waitFor();
-            reader.close();
-            
-        } catch (Exception e) {
-            System.err.println("Failed to enumerate Windows Media Foundation devices: " + e.getMessage());
-        }
-        
-        return devices;
-    }
-    
-    /**
-     * Detects cameras using DirectShow (fallback for older Windows or specific hardware).
+     * Detects cameras using DirectShow via FFmpeg.
+     * Stores device index as ID for reliable JavaCV access.
      */
     private List<CameraDevice> detectDirectShowDevices() {
         List<CameraDevice> devices = new ArrayList<>();
-        
+
         try {
             ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg", "-list_devices", "true", "-f", "dshow", "-i", "dummy"
             );
             pb.redirectErrorStream(true);
             Process process = pb.start();
-            
+
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
-            Pattern devicePattern = Pattern.compile("\\[.*?\\]\\s+\"([^\"]+)\"");
-            Pattern altNamePattern = Pattern.compile("Alternative name\\s+\"([^\"]+)\"");
-            
-            String currentDeviceName = null;
-            
+            // Pattern to match device name in quotes followed by (video)
+            // Example: [dshow @ 00000260f92f62c0] "UVC Camera" (video)
+            Pattern devicePattern = Pattern.compile("\\[dshow.*?]\\s+\"([^\"]+)\"\\s+\\(video\\)");
+
+            int deviceIndex = 0;
             while ((line = reader.readLine()) != null) {
-                if (line.contains("DirectShow video devices") || line.contains("video devices")) {
+                // Skip alternative name lines
+                if (line.contains("Alternative name")) {
                     continue;
                 }
                 
                 Matcher deviceMatcher = devicePattern.matcher(line);
-                if (deviceMatcher.find() && line.contains("video")) {
-                    currentDeviceName = deviceMatcher.group(1);
-                    devices.add(new CameraDevice(currentDeviceName, currentDeviceName));
-                } else if (currentDeviceName != null && line.contains("Alternative name")) {
-                    Matcher altMatcher = altNamePattern.matcher(line);
-                    if (altMatcher.find()) {
-                        String altName = altMatcher.group(1);
-                        devices.remove(devices.size() - 1);
-                        devices.add(new CameraDevice(altName, currentDeviceName));
-                    }
-                    currentDeviceName = null;
+                if (deviceMatcher.find()) {
+                    String deviceName = deviceMatcher.group(1);
+                    // Use device index as ID for reliable access via OpenCV/JavaCV
+                    devices.add(new CameraDevice(String.valueOf(deviceIndex), deviceName));
+                    System.out.println("Windows: Found video device [" + deviceIndex + "]: " + deviceName);
+                    deviceIndex++;
                 }
             }
             
@@ -145,26 +79,18 @@ public class WindowsCameraStrategy implements CameraStrategy {
     }
     
     @Override
-    public void configureGrabber(FFmpegFrameGrabber grabber, String deviceId) {
-        // Use DirectShow format (still required by FFmpeg on Windows)
-        // but with optimized settings for Windows 10/11
-        grabber.setFormat("dshow");
-        
-        // Set video_size to a common resolution for better compatibility
+    public FrameGrabber createGrabber(String deviceId) {
+        // Use OpenCVFrameGrabber with device index for Windows
+        // This is more reliable than FFmpegFrameGrabber with DirectShow
+        int deviceIndex = Integer.parseInt(deviceId);
+        OpenCVFrameGrabber grabber = new OpenCVFrameGrabber(deviceIndex);
+
+        // Set resolution
         grabber.setImageWidth(640);
         grabber.setImageHeight(480);
         
-        // Set framerate
-        grabber.setFrameRate(30);
-        
-        // Add buffer size to reduce latency
-        grabber.setOption("rtbufsize", "100M");
-        
-        // Use low latency mode
-        grabber.setOption("fflags", "nobuffer");
-        grabber.setOption("flags", "low_delay");
-        
-        System.out.println("Windows: Configuring DirectShow grabber with device: " + deviceId);
+        System.out.println("Windows: Created OpenCV grabber for device index: " + deviceIndex);
+        return grabber;
     }
     
     @Override

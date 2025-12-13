@@ -1,6 +1,7 @@
 package com.example.simplephototool;
 
 import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.FrameGrabber;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,9 +25,13 @@ public class MacCameraStrategy implements CameraStrategy {
     }
     
     @Override
-    public void configureGrabber(FFmpegFrameGrabber grabber, String deviceId) {
+    public FrameGrabber createGrabber(String deviceId) {
+        FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(deviceId);
         grabber.setFormat("avfoundation");
         grabber.setOption("framerate", "30");
+        grabber.setImageWidth(640);
+        grabber.setImageHeight(480);
+        return grabber;
     }
     
     @Override

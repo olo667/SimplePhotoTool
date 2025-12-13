@@ -1,6 +1,7 @@
 package com.example.simplephototool;
 
 import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.FrameGrabber;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -31,9 +32,13 @@ public class LinuxCameraStrategy implements CameraStrategy {
     }
     
     @Override
-    public void configureGrabber(FFmpegFrameGrabber grabber, String deviceId) {
+    public FrameGrabber createGrabber(String deviceId) {
+        FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(deviceId);
         grabber.setFormat("video4linux2");
         grabber.setOption("framerate", "30");
+        grabber.setImageWidth(640);
+        grabber.setImageHeight(480);
+        return grabber;
     }
     
     @Override

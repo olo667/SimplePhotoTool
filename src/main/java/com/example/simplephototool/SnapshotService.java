@@ -1,6 +1,6 @@
 package com.example.simplephototool;
 
-import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.FrameGrabber;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 
@@ -81,28 +81,22 @@ public class SnapshotService {
     }
     
     private static boolean captureSnapshotJavaCV(Camera camera, Settings settings) {
-        FFmpegFrameGrabber grabber = null;
+        FrameGrabber grabber = null;
         Java2DFrameConverter converter = null;
         try {
             String deviceId = camera.getDeviceId();
             
-            // For Windows dshow format, prepend "video=" to the device name
-            String grabberInput = deviceId;
-            if (strategy.getPlatformName().equals("Windows")) {
-                grabberInput = "video=" + deviceId;
-            }
-            
-            grabber = new FFmpegFrameGrabber(grabberInput);
-            strategy.configureGrabber(grabber, deviceId);
+            // Use strategy to create platform-specific grabber
+            grabber = strategy.createGrabber(deviceId);
             grabber.start();
 
             // Grab a few frames to let camera stabilize
             for (int i = 0; i < 5; i++) {
-                grabber.grabImage();
+                grabber.grab();
             }
             
-            Frame frame = grabber.grabImage();
-            if (frame == null) {
+            Frame frame = grabber.grab();
+            if (frame == null || frame.image == null) {
                 System.err.println("Failed to grab frame from " + camera.getName());
                 return false;
             }
