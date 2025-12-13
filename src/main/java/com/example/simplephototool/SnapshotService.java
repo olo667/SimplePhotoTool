@@ -86,7 +86,13 @@ public class SnapshotService {
         try {
             String deviceId = camera.getDeviceId();
             
-            grabber = new FFmpegFrameGrabber(deviceId);
+            // For Windows dshow format, prepend "video=" to the device name
+            String grabberInput = deviceId;
+            if (strategy.getPlatformName().equals("Windows")) {
+                grabberInput = "video=" + deviceId;
+            }
+            
+            grabber = new FFmpegFrameGrabber(grabberInput);
             strategy.configureGrabber(grabber, deviceId);
             grabber.start();
 

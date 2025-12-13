@@ -51,18 +51,36 @@ public class WindowsCameraStrategy implements CameraStrategy {
             
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
+            // Pattern to match both device name and optional alternative name
+            // Example: [dshow @ ...] "USB Camera" (video)
+            //          [dshow @ ...] "USB Camera"
+            //          [dshow @ ...] "@device_pnp_\\\\?\\usb#vid_..." (alternative name)
             Pattern devicePattern = Pattern.compile("\\[.*?\\]\\s+\"([^\"]+)\"");
-            int deviceIndex = 0;
+            Pattern altNamePattern = Pattern.compile("Alternative name\\s+\"([^\"]+)\"");
+            
+            String currentDeviceName = null;
             
             while ((line = reader.readLine()) != null) {
-                if (line.contains("video")) {
-                    Matcher matcher = devicePattern.matcher(line);
-                    if (matcher.find()) {
-                        String deviceName = matcher.group(1);
-                        // Use index as device ID for more reliable access
-                        devices.add(new CameraDevice(String.valueOf(deviceIndex), deviceName));
-                        deviceIndex++;
+                // Look for video devices
+                if (line.contains("DirectShow video devices") || line.contains("video devices")) {
+                    continue;
+                }
+                
+                Matcher deviceMatcher = devicePattern.matcher(line);
+                if (deviceMatcher.find() && line.contains("video")) {
+                    currentDeviceName = deviceMatcher.group(1);
+                    // Store device with name as both ID and display (will be updated if alt name found)
+                    devices.add(new CameraDevice(currentDeviceName, currentDeviceName));
+                } else if (currentDeviceName != null && line.contains("Alternative name")) {
+                    // Found alternative name for the previous device
+                    Matcher altMatcher = altNamePattern.matcher(line);
+                    if (altMatcher.find()) {
+                        String altName = altMatcher.group(1);
+                        // Update the last added device to use alternative name as ID
+                        devices.remove(devices.size() - 1);
+                        devices.add(new CameraDevice(altName, currentDeviceName));
                     }
+                    currentDeviceName = null;
                 }
             }
             
@@ -92,14 +110,27 @@ public class WindowsCameraStrategy implements CameraStrategy {
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             Pattern devicePattern = Pattern.compile("\\[.*?\\]\\s+\"([^\"]+)\"");
+            Pattern altNamePattern = Pattern.compile("Alternative name\\s+\"([^\"]+)\"");
+            
+            String currentDeviceName = null;
             
             while ((line = reader.readLine()) != null) {
-                if (line.contains("video")) {
-                    Matcher matcher = devicePattern.matcher(line);
-                    if (matcher.find()) {
-                        String deviceName = matcher.group(1);
-                        devices.add(new CameraDevice(deviceName, deviceName));
+                if (line.contains("DirectShow video devices") || line.contains("video devices")) {
+                    continue;
+                }
+                
+                Matcher deviceMatcher = devicePattern.matcher(line);
+                if (deviceMatcher.find() && line.contains("video")) {
+                    currentDeviceName = deviceMatcher.group(1);
+                    devices.add(new CameraDevice(currentDeviceName, currentDeviceName));
+                } else if (currentDeviceName != null && line.contains("Alternative name")) {
+                    Matcher altMatcher = altNamePattern.matcher(line);
+                    if (altMatcher.find()) {
+                        String altName = altMatcher.group(1);
+                        devices.remove(devices.size() - 1);
+                        devices.add(new CameraDevice(altName, currentDeviceName));
                     }
+                    currentDeviceName = null;
                 }
             }
             
@@ -132,6 +163,8 @@ public class WindowsCameraStrategy implements CameraStrategy {
         // Use low latency mode
         grabber.setOption("fflags", "nobuffer");
         grabber.setOption("flags", "low_delay");
+        
+        System.out.println("Windows: Configuring DirectShow grabber with device: " + deviceId);
     }
     
     @Override
