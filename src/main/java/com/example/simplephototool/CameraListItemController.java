@@ -24,6 +24,9 @@ public class CameraListItemController {
     private Label cameraNameLabel;
 
     @FXML
+    private Button editButton;
+
+    @FXML
     private Button deleteButton;
     @FXML
     private RadioButton previewRadio;
@@ -31,6 +34,7 @@ public class CameraListItemController {
     private Camera camera;
     private Consumer<Camera> onDeleteCallback;
     private Consumer<Camera> onPreviewCallback;
+    private Consumer<Camera> onEditCallback;
 
     /**
      * Sets the camera to display in this list item.
@@ -54,6 +58,13 @@ public class CameraListItemController {
      */
     public void setOnDeleteCallback(Consumer<Camera> callback) {
         this.onDeleteCallback = callback;
+    }
+
+    /**
+     * Sets the callback to be invoked when the edit button is clicked.
+     */
+    public void setOnEditCallback(Consumer<Camera> callback) {
+        this.onEditCallback = callback;
     }
 
     public void setOnPreviewCallback(Consumer<Camera> callback) {
@@ -84,6 +95,13 @@ public class CameraListItemController {
     private void onDelete() {
         if (camera != null && onDeleteCallback != null) {
             onDeleteCallback.accept(camera);
+        }
+    }
+
+    @FXML
+    private void onEdit() {
+        if (camera != null && onEditCallback != null) {
+            onEditCallback.accept(camera);
         }
     }
 

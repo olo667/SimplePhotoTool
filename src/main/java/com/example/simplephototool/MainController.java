@@ -1,18 +1,21 @@
 package com.example.simplephototool;
 
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.image.ImageView;
+import javafx.scene.layout.FlowPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.util.Map;
 
 public class MainController {
     @FXML
@@ -22,11 +25,14 @@ public class MainController {
     private Button addCamera;
 
     @FXML
-    private ImageView previewImageView;
+    private FlowPane previewGrid;
+    
+    @FXML
+    private ScrollPane previewScrollPane;
 
     private ObservableList<Camera> cameras = FXCollections.observableArrayList();
     private ToggleGroup previewToggleGroup = new ToggleGroup();
-    private CameraPreviewService previewService;
+    private PreviewManager previewManager;
     private Settings settings;
 
     @FXML
@@ -37,9 +43,41 @@ public class MainController {
         
         // Set up the camera list with custom cell factory
         cameraList.setItems(cameras);
-        cameraList.setCellFactory(listView -> new CameraListCell(this::deleteCamera, previewToggleGroup, this::onPreviewSelected));
+        cameraList.setCellFactory(listView -> new CameraListCell(
+            this::deleteCamera, 
+            this::editCamera, 
+            previewToggleGroup, 
+            this::onPreviewSelected
+        ));
 
-        previewService = new CameraPreviewService();
+        // Initialize preview manager with camera list
+        previewManager = new PreviewManager(cameras, settings);
+        
+        // Replace the FXML FlowPane content with PreviewManager's tiles
+        rebuildPreviewGrid();
+        
+        // Listen for camera list changes to update grid
+        cameras.addListener((ListChangeListener<Camera>) change -> {
+            while (change.next()) {
+                if (change.wasAdded() || change.wasRemoved()) {
+                    previewManager.refresh();
+                    rebuildPreviewGrid();
+                }
+            }
+        });
+    }
+    
+    /**
+     * Rebuilds the preview grid from the PreviewManager.
+     */
+    private void rebuildPreviewGrid() {
+        previewGrid.getChildren().clear();
+        for (Camera camera : cameras) {
+            PreviewTile tile = previewManager.getTile(camera.getDeviceId());
+            if (tile != null && !previewGrid.getChildren().contains(tile)) {
+                previewGrid.getChildren().add(tile);
+            }
+        }
     }
 
     @FXML
@@ -99,47 +137,92 @@ public class MainController {
             dialogStage.showAndWait();
             
             if (controller.isSaveClicked()) {
-                // Settings already saved by the controller
+                // Update preview manager with new settings
+                previewManager.setSettings(settings);
                 System.out.println("Settings updated");
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+    
+    @FXML
+    private void onStartAllPreviews() {
+        previewManager.startAllPreviews();
+    }
+    
+    @FXML
+    private void onStopAllPreviews() {
+        previewManager.stopAllPreviews();
+    }
 
     private void deleteCamera(Camera camera) {
+        // Stop preview for this camera if running
+        previewManager.stopPreview(camera.getDeviceId());
         cameras.remove(camera);
         saveCameras();
     }
 
+    private void editCamera(Camera camera) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("edit-camera-dialog.fxml"));
+            Scene scene = new Scene(loader.load());
+            
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Edit Camera");
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(addCamera.getScene().getWindow());
+            dialogStage.setScene(scene);
+            dialogStage.setResizable(false);
+            
+            EditCameraDialogController controller = loader.getController();
+            controller.setCamera(camera);
+            
+            dialogStage.showAndWait();
+            
+            if (controller.isSaveClicked()) {
+                // Refresh the list view to show updated name
+                cameraList.refresh();
+                // Refresh preview tiles
+                previewManager.refresh();
+                rebuildPreviewGrid();
+                saveCameras();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void onPreviewSelected(Camera camera) {
         if (camera == null) return;
-        // start preview for the selected camera's deviceId
-        if (previewService != null) {
-            previewService.startPreview(camera.getDeviceId(), previewImageView);
+        // Toggle preview for the selected camera
+        PreviewTile tile = previewManager.getTile(camera.getDeviceId());
+        if (tile != null) {
+            tile.togglePreview();
         }
     }
 
     @FXML
     public void onTakeSnapshot() {
-        // Temporarily stop preview if running
-        boolean wasPreviewRunning = previewService != null && previewService.isRunning();
-        String activeDeviceId = null;
+        // Collect running preview device IDs to restart after snapshot
+        Map<String, PreviewTile> tiles = previewManager.getTiles();
+        java.util.List<String> runningDevices = new java.util.ArrayList<>();
         
-        if (wasPreviewRunning) {
-            activeDeviceId = previewService.getCurrentDeviceId();
-            previewService.stopPreview();
+        for (Map.Entry<String, PreviewTile> entry : tiles.entrySet()) {
+            if (entry.getValue().isRunning()) {
+                runningDevices.add(entry.getKey());
+            }
         }
         
-        // Run snapshot capture in background thread
-        final String deviceToRestart = activeDeviceId;
-        final boolean shouldRestart = wasPreviewRunning;
+        // Stop all previews before taking snapshot
+        previewManager.stopAllPreviews();
         
+        // Run snapshot capture in background thread
         new Thread(() -> {
-            // Give the device time to release
-            if (shouldRestart) {
+            // Give the devices time to release
+            if (!runningDevices.isEmpty()) {
                 try {
-                    Thread.sleep(200);
+                    Thread.sleep(300);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     return;
@@ -149,8 +232,8 @@ public class MainController {
             int count = SnapshotService.captureSnapshots(cameras, settings);
             System.out.println("Captured " + count + " snapshots.");
             
-            // Restart preview if it was running
-            if (shouldRestart && deviceToRestart != null) {
+            // Restart previews that were running
+            if (!runningDevices.isEmpty()) {
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
@@ -158,15 +241,26 @@ public class MainController {
                     return;
                 }
                 javafx.application.Platform.runLater(() -> {
-                    previewService.startPreview(deviceToRestart, previewImageView);
+                    for (String deviceId : runningDevices) {
+                        previewManager.startPreview(deviceId);
+                    }
                 });
             }
         }).start();
     }
 
     public void stopPreview() {
-        if (previewService != null) {
-            previewService.stopPreview();
+        if (previewManager != null) {
+            previewManager.stopAllPreviews();
+        }
+    }
+    
+    /**
+     * Shuts down all resources. Call when application is closing.
+     */
+    public void shutdown() {
+        if (previewManager != null) {
+            previewManager.shutdown();
         }
     }
 }

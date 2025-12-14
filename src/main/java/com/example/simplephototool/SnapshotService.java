@@ -1,19 +1,16 @@
 package com.example.simplephototool;
 
-import org.bytedeco.javacv.FrameGrabber;
-import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.Java2DFrameConverter;
-
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -25,7 +22,8 @@ public class SnapshotService {
     private static final CameraStrategy strategy = CameraStrategyFactory.getStrategy();
     
     /**
-     * Captures snapshots from all active cameras.
+     * Captures snapshots from all active cameras in parallel.
+     * Each camera runs on its own thread for faster overall capture.
      * 
      * @param cameras List of all cameras
      * @param settings Application settings containing output directory and filename pattern
@@ -53,103 +51,44 @@ public class SnapshotService {
             return 0;
         }
 
-        int successCount = 0;
+        // Create a thread pool with one thread per camera for parallel capture
+        ExecutorService executor = Executors.newFixedThreadPool(activeCameras.size());
+        AtomicInteger successCount = new AtomicInteger(0);
+        
+        // Submit all camera capture tasks in parallel
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (Camera camera : activeCameras) {
-            try {
-                if (captureSnapshot(camera, settings)) {
-                    successCount++;
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try {
+                    if (strategy.captureSnapshot(camera, settings)) {
+                        successCount.incrementAndGet();
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error capturing from camera " + camera.getName() + ": " + e.getMessage());
+                    e.printStackTrace();
                 }
-            } catch (Exception e) {
-                System.err.println("Error capturing from camera " + camera.getName() + ": " + e.getMessage());
-                e.printStackTrace();
-            }
+            }, executor);
+            futures.add(future);
         }
         
-        System.out.println("Captured " + successCount + " of " + activeCameras.size() + " snapshots.");
-        return successCount;
-    }
-    
-    /**
-     * Captures a snapshot from a single camera.
-     * 
-     * @param camera The camera to capture from
-     * @param settings Application settings
-     * @return true if successful
-     */
-    private static boolean captureSnapshot(Camera camera, Settings settings) {
-        return captureSnapshotJavaCV(camera, settings);
-    }
-    
-    private static boolean captureSnapshotJavaCV(Camera camera, Settings settings) {
-        FrameGrabber grabber = null;
-        Java2DFrameConverter converter = null;
+        // Wait for all captures to complete
         try {
-            String deviceId = camera.getDeviceId();
-            
-            // Use strategy to create platform-specific grabber
-            grabber = strategy.createGrabber(deviceId);
-            grabber.start();
-
-            // Grab a few frames to let camera stabilize
-            for (int i = 0; i < 5; i++) {
-                grabber.grab();
-            }
-            
-            Frame frame = grabber.grab();
-            if (frame == null || frame.image == null) {
-                System.err.println("Failed to grab frame from " + camera.getName());
-                return false;
-            }
-
-            String filename = generateFilename(camera, settings.getFilenamePattern());
-            String filepath = settings.getSnapshotOutputDirectory() + File.separator + filename;
-
-            converter = new Java2DFrameConverter();
-            BufferedImage image = converter.getBufferedImage(frame);
-            
-            File outputFile = new File(filepath);
-            ImageIO.write(image, "jpg", outputFile);
-            
-            System.out.println("Snapshot saved: " + filepath);
-            return true;
-            
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         } catch (Exception e) {
-            System.err.println("Error capturing snapshot from " + camera.getName() + ": " + e.getMessage());
-            e.printStackTrace();
-            return false;
+            System.err.println("Error waiting for snapshot captures: " + e.getMessage());
         } finally {
-            if (converter != null) {
-                try {
-                    converter.close();
-                } catch (Exception ignored) {}
-            }
-            if (grabber != null) {
-                try {
-                    grabber.stop();
-                } catch (Exception ignored) {}
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
             }
         }
-    }
-    
-    /**
-     * Generates a filename from the pattern, replacing placeholders.
-     * 
-     * @param camera The camera
-     * @param pattern The filename pattern
-     * @return Generated filename
-     */
-    private static String generateFilename(Camera camera, String pattern) {
-        String filename = pattern;
         
-        // Replace {id} with camera name (sanitized)
-        String sanitizedName = camera.getName().replaceAll("[^a-zA-Z0-9-_]", "_");
-        filename = filename.replace("{id}", sanitizedName);
-        
-        // Replace {timestamp} with current timestamp
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
-        String timestamp = dateFormat.format(new Date());
-        filename = filename.replace("{timestamp}", timestamp);
-        
-        return filename;
+        System.out.println("Captured " + successCount.get() + " of " + activeCameras.size() + " snapshots.");
+        return successCount.get();
     }
 }

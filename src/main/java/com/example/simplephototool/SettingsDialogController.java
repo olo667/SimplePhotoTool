@@ -1,6 +1,8 @@
 package com.example.simplephototool;
 
+import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
@@ -18,6 +20,9 @@ public class SettingsDialogController {
     @FXML
     private TextField filenamePatternField;
 
+    @FXML
+    private ComboBox<String> defaultResolutionComboBox;
+
     private Settings settings;
     private Stage dialogStage;
     private boolean saveClicked = false;
@@ -27,7 +32,8 @@ public class SettingsDialogController {
      */
     @FXML
     private void initialize() {
-        // Initialization done in setSettings method
+        // Initialize resolution combo box with available options
+        defaultResolutionComboBox.setItems(FXCollections.observableArrayList(Settings.RESOLUTION_OPTIONS));
     }
 
     /**
@@ -48,6 +54,14 @@ public class SettingsDialogController {
         this.settings = settings;
         outputDirectoryField.setText(settings.getSnapshotOutputDirectory());
         filenamePatternField.setText(settings.getFilenamePattern());
+        
+        // Set default resolution selection
+        String currentResolution = settings.getDefaultResolution();
+        if (currentResolution != null && !currentResolution.isEmpty()) {
+            defaultResolutionComboBox.setValue(currentResolution);
+        } else {
+            defaultResolutionComboBox.setValue(Settings.DEFAULT_RESOLUTION);
+        }
     }
 
     /**
@@ -86,6 +100,7 @@ public class SettingsDialogController {
     private void handleSave() {
         settings.setSnapshotOutputDirectory(outputDirectoryField.getText());
         settings.setFilenamePattern(filenamePatternField.getText());
+        settings.setDefaultResolution(defaultResolutionComboBox.getValue());
         
         try {
             SettingsManager.saveSettings(settings);

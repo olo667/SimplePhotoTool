@@ -25,7 +25,25 @@ public class CameraPreviewService {
         this.strategy = CameraStrategyFactory.getStrategy();
     }
 
+    /**
+     * Starts preview for a device with default resolution.
+     * 
+     * @param deviceId The device ID to preview
+     * @param target The ImageView to display preview
+     */
     public void startPreview(String deviceId, ImageView target) {
+        startPreview(deviceId, target, 0, 0);
+    }
+
+    /**
+     * Starts preview for a device with specified resolution.
+     * 
+     * @param deviceId The device ID to preview
+     * @param target The ImageView to display preview
+     * @param width The desired width (0 for default)
+     * @param height The desired height (0 for default)
+     */
+    public void startPreview(String deviceId, ImageView target, int width, int height) {
         stopPreview();
 
         this.currentDeviceId = deviceId;
@@ -34,8 +52,12 @@ public class CameraPreviewService {
         worker = new Thread(() -> {
             Java2DFrameConverter converter = null;
             try {
-                // Use strategy to create platform-specific grabber
-                grabber = strategy.createGrabber(deviceId);
+                // Use strategy to create platform-specific grabber with resolution
+                if (width > 0 && height > 0) {
+                    grabber = strategy.createGrabber(deviceId, width, height);
+                } else {
+                    grabber = strategy.createGrabber(deviceId);
+                }
                 grabber.start();
 
                 converter = new Java2DFrameConverter();

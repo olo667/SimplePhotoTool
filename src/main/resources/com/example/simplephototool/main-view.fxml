@@ -2,28 +2,32 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.ToolBar?>
-<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
 
-<AnchorPane minHeight="480.0" minWidth="640.0" prefHeight="480.0" prefWidth="640.0" xmlns="http://javafx.com/javafx/17"
+<AnchorPane minHeight="600.0" minWidth="900.0" prefHeight="700.0" prefWidth="1100.0" xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.simplephototool.MainController">
     <AnchorPane maxHeight="40.0" minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0"
                 AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
         <ToolBar prefHeight="40.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
                  AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
             <Button mnemonicParsing="false" text="Settings" onAction="#onSettings"/>
+            <Button mnemonicParsing="false" text="Start All Previews" onAction="#onStartAllPreviews"/>
+            <Button mnemonicParsing="false" text="Stop All Previews" onAction="#onStopAllPreviews"/>
         </ToolBar>
     </AnchorPane>
     <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0" AnchorPane.bottomAnchor="0.0"
                 AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="40.0">
-        <SplitPane dividerPositions="0.3996865203761755" prefHeight="160.0" prefWidth="200.0"
+        <SplitPane dividerPositions="0.25" prefHeight="160.0" prefWidth="200.0"
                    AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0"
                    AnchorPane.topAnchor="0.0">
-            <AnchorPane>
+            <AnchorPane minWidth="200.0" maxWidth="300.0">
                 <ListView fx:id="cameraList" prefHeight="200.0" prefWidth="200.0"
                           AnchorPane.bottomAnchor="40.0" AnchorPane.leftAnchor="0.0"
                           AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
@@ -40,15 +44,21 @@
                 </AnchorPane>
             </AnchorPane>
             <AnchorPane>
-                <VBox alignment="CENTER" layoutX="89.0" layoutY="403.0" prefHeight="40.0" prefWidth="380.0"
-                      AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+                <!-- Preview Grid Area -->
+                <ScrollPane fx:id="previewScrollPane" fitToWidth="true" 
+                            AnchorPane.topAnchor="0.0" AnchorPane.rightAnchor="0.0" 
+                            AnchorPane.bottomAnchor="50.0" AnchorPane.leftAnchor="0.0"
+                            style="-fx-background-color: #1a1a1a;">
+                    <FlowPane fx:id="previewGrid" hgap="10" vgap="10" 
+                              style="-fx-background-color: #1a1a1a; -fx-padding: 10;"/>
+                </ScrollPane>
+                <!-- Bottom Button Bar -->
+                <HBox alignment="CENTER" spacing="20" prefHeight="40.0"
+                      AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="0.0"
                       AnchorPane.rightAnchor="0.0">
                     <Button maxHeight="-Infinity" minHeight="-Infinity" mnemonicParsing="false"
-                            prefHeight="30.0" text="Take snapshot (Enter)" onAction="#onTakeSnapshot"/>
-                </VBox>
-                <AnchorPane AnchorPane.topAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.bottomAnchor="50.0" AnchorPane.leftAnchor="10.0">
-                    <ImageView fx:id="previewImageView" fitWidth="380.0" preserveRatio="true" />
-                </AnchorPane>
+                            prefHeight="30.0" text="Take Snapshot (Enter)" onAction="#onTakeSnapshot"/>
+                </HBox>
             </AnchorPane>
         </SplitPane>
     </AnchorPane>

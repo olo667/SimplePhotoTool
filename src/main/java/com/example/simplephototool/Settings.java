@@ -9,11 +9,27 @@ import java.util.List;
 public class Settings {
     private String snapshotOutputDirectory;
     private String filenamePattern;
+    private String defaultResolution;
     private List<Camera> cameras;
+
+    /** Common resolution options available for cameras */
+    public static final String[] RESOLUTION_OPTIONS = {
+        "640x480",
+        "800x600",
+        "1024x768",
+        "1280x720",
+        "1280x960",
+        "1920x1080",
+        "2560x1440",
+        "3840x2160"
+    };
+
+    public static final String DEFAULT_RESOLUTION = "1280x720";
 
     public Settings() {
         this.snapshotOutputDirectory = System.getProperty("user.home") + "/Pictures/SimplePhotoTool";
         this.filenamePattern = "camera-{id}_{timestamp}.jpg";
+        this.defaultResolution = DEFAULT_RESOLUTION;
         this.cameras = new ArrayList<>();
     }
 
@@ -39,5 +55,33 @@ public class Settings {
 
     public void setCameras(List<Camera> cameras) {
         this.cameras = cameras;
+    }
+
+    public String getDefaultResolution() {
+        return defaultResolution != null ? defaultResolution : DEFAULT_RESOLUTION;
+    }
+
+    public void setDefaultResolution(String defaultResolution) {
+        this.defaultResolution = defaultResolution;
+    }
+
+    /**
+     * Parses a resolution string into width and height.
+     * @param resolution Resolution string in format "WIDTHxHEIGHT"
+     * @return int array with [width, height], or null if parsing fails
+     */
+    public static int[] parseResolution(String resolution) {
+        if (resolution == null || resolution.isEmpty()) {
+            return null;
+        }
+        try {
+            String[] parts = resolution.toLowerCase().split("x");
+            if (parts.length == 2) {
+                return new int[] { Integer.parseInt(parts[0].trim()), Integer.parseInt(parts[1].trim()) };
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Failed to parse resolution: " + resolution);
+        }
+        return null;
     }
 }

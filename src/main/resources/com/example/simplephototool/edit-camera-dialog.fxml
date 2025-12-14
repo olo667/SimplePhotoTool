@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="15.0" prefWidth="400.0" xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.example.simplephototool.EditCameraDialogController">
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
+    </padding>
+
+    <!-- Device info (read-only) -->
+    <VBox spacing="5.0">
+        <Label text="Camera Device:" styleClass="form-label"/>
+        <Label fx:id="deviceIdLabel" style="-fx-text-fill: gray;"/>
+    </VBox>
+
+    <!-- Camera label/name -->
+    <VBox spacing="5.0">
+        <Label text="Camera Name:" styleClass="form-label"/>
+        <TextField fx:id="cameraNameField" promptText="Enter a name for this camera"/>
+    </VBox>
+
+    <!-- Resolution selection -->
+    <VBox spacing="5.0">
+        <Label text="Resolution:" styleClass="form-label"/>
+        <ComboBox fx:id="resolutionComboBox" maxWidth="Infinity"/>
+        <CheckBox fx:id="useDefaultResolutionCheckBox" text="Use default resolution from settings"/>
+    </VBox>
+
+    <!-- Buttons -->
+    <HBox spacing="10.0" alignment="CENTER_RIGHT">
+        <padding>
+            <Insets top="10.0"/>
+        </padding>
+        <Button fx:id="cancelButton" text="Cancel" onAction="#onCancel" 
+                prefWidth="80.0" cancelButton="true"/>
+        <Button fx:id="saveButton" text="Save" onAction="#onSave" 
+                prefWidth="80.0" defaultButton="true"/>
+    </HBox>
+</VBox>

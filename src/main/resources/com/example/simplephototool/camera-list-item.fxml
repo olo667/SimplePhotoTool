@@ -24,6 +24,11 @@
     <!-- Camera name label -->
     <Label fx:id="cameraNameLabel" text="Camera Name" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
     
+    <!-- Edit button -->
+    <Button fx:id="editButton" mnemonicParsing="false" onAction="#onEdit" 
+            text="✎" styleClass="edit-button"
+            prefWidth="25.0" prefHeight="25.0"/>
+    
     <!-- Delete button -->
     <Button fx:id="deleteButton" mnemonicParsing="false" onAction="#onDelete" 
             text="✕" styleClass="delete-button"
