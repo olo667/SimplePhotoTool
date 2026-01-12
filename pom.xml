@@ -6,7 +6,7 @@
 
     <groupId>com.example</groupId>
     <artifactId>SimplePhotoTool</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.1-SNAPSHOT</version>
     <name>SimplePhotoTool</name>
 
     <properties>
@@ -176,6 +176,19 @@
             <artifactId>ffmpeg</artifactId>
             <version>5.1.2-${javacv.version}</version>
             <classifier>linux-x86_64</classifier>
+        </dependency>
+
+        <!-- VideoInput - required for Windows camera capture -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>videoinput</artifactId>
+            <version>0.200-${javacv.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>videoinput</artifactId>
+            <version>0.200-${javacv.version}</version>
+            <classifier>windows-x86_64</classifier>
         </dependency>
 
         <dependency>

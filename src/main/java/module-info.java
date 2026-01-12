@@ -11,6 +11,7 @@ module com.example.simplephototool {
     requires org.kordamp.bootstrapfx.core;
     requires org.bytedeco.javacv;
     requires org.bytedeco.opencv;
+    requires org.bytedeco.videoinput;
 
     opens com.example.simplephototool to javafx.fxml;
     exports com.example.simplephototool;

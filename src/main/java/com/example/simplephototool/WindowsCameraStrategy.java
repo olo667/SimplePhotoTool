@@ -2,7 +2,6 @@ package com.example.simplephototool;
 
 import org.bytedeco.javacv.FrameGrabber;
 import org.bytedeco.javacv.OpenCVFrameGrabber;
-import org.bytedeco.javacv.VideoInputFrameGrabber;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -12,7 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Windows-specific camera strategy using OpenCV/VideoInput for better compatibility.
+ * Windows-specific camera strategy using OpenCV for better compatibility.
  * Uses device indices for reliable camera access.
  */
 public class WindowsCameraStrategy implements CameraStrategy {
@@ -21,44 +20,12 @@ public class WindowsCameraStrategy implements CameraStrategy {
     public List<CameraDevice> detectDevices() {
         List<CameraDevice> devices = new ArrayList<>();
         
-        // Try VideoInput first (native Windows API, most reliable on Windows 11)
-        devices.addAll(detectVideoInputDevices());
+        // Detect DirectShow video devices
+        devices.addAll(detectDirectShowDevices());
 
-        // If VideoInput fails, try DirectShow via FFmpeg as fallback
+        // If detection fails, add default camera by index
         if (devices.isEmpty()) {
-            devices.addAll(detectDirectShowDevices());
-        }
-
-        // If all detection methods fail, probe cameras by index
-        if (devices.isEmpty()) {
-            devices.addAll(probeDevicesByIndex());
-        }
-
-        return devices;
-    }
-
-    /**
-     * Detects cameras using VideoInput library (native Windows DirectShow access).
-     * This is the most reliable method for Windows 10/11.
-     */
-    private List<CameraDevice> detectVideoInputDevices() {
-        List<CameraDevice> devices = new ArrayList<>();
-
-        try {
-            // VideoInputFrameGrabber.getDeviceDescriptions() returns device names
-            String[] deviceDescriptions = VideoInputFrameGrabber.getDeviceDescriptions();
-
-            if (deviceDescriptions != null) {
-                for (int i = 0; i < deviceDescriptions.length; i++) {
-                    String deviceName = deviceDescriptions[i];
-                    if (deviceName != null && !deviceName.isEmpty()) {
-                        devices.add(new CameraDevice(String.valueOf(i), deviceName));
-                        System.out.println("Windows VideoInput: Found device [" + i + "]: " + deviceName);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("VideoInput device enumeration failed: " + e.getMessage());
+            devices.add(new CameraDevice("0", "Default Camera"));
         }
         
         return devices;
@@ -66,7 +33,7 @@ public class WindowsCameraStrategy implements CameraStrategy {
     
     /**
      * Detects cameras using DirectShow via FFmpeg.
-     * Requires ffmpeg to be installed and in PATH.
+     * Stores device index as ID for reliable JavaCV access.
      */
     private List<CameraDevice> detectDirectShowDevices() {
         List<CameraDevice> devices = new ArrayList<>();
@@ -96,7 +63,7 @@ public class WindowsCameraStrategy implements CameraStrategy {
                     String deviceName = deviceMatcher.group(1);
                     // Use device index as ID for reliable access via OpenCV/JavaCV
                     devices.add(new CameraDevice(String.valueOf(deviceIndex), deviceName));
-                    System.out.println("Windows DirectShow: Found video device [" + deviceIndex + "]: " + deviceName);
+                    System.out.println("Windows: Found video device [" + deviceIndex + "]: " + deviceName);
                     deviceIndex++;
                 }
             }
@@ -105,41 +72,7 @@ public class WindowsCameraStrategy implements CameraStrategy {
             reader.close();
             
         } catch (Exception e) {
-            System.err.println("DirectShow device enumeration failed (ffmpeg not in PATH?): " + e.getMessage());
-        }
-
-        return devices;
-    }
-
-    /**
-     * Probes cameras by attempting to open them by index.
-     * This is a fallback when other detection methods fail.
-     */
-    private List<CameraDevice> probeDevicesByIndex() {
-        List<CameraDevice> devices = new ArrayList<>();
-
-        System.out.println("Windows: Probing cameras by index...");
-
-        // Try up to 10 device indices
-        for (int i = 0; i < 10; i++) {
-            try {
-                OpenCVFrameGrabber grabber = new OpenCVFrameGrabber(i);
-                grabber.start();
-
-                // If we get here, the camera opened successfully
-                grabber.stop();
-                grabber.close();
-
-                devices.add(new CameraDevice(String.valueOf(i), "Camera " + i));
-                System.out.println("Windows: Found camera at index " + i);
-
-            } catch (Exception e) {
-                // Camera at this index doesn't exist or can't be opened
-                // Stop probing after first failure if we already found cameras
-                if (!devices.isEmpty()) {
-                    break;
-                }
-            }
+            System.err.println("Failed to enumerate Windows DirectShow devices: " + e.getMessage());
         }
         
         return devices;
@@ -147,21 +80,12 @@ public class WindowsCameraStrategy implements CameraStrategy {
     
     @Override
     public FrameGrabber createGrabber(String deviceId) {
+        // Use OpenCVFrameGrabber with device index for Windows
+        // This is more reliable than FFmpegFrameGrabber with DirectShow
         int deviceIndex = Integer.parseInt(deviceId);
-
-        // Try VideoInputFrameGrabber first (more reliable on Windows 11)
-        try {
-            VideoInputFrameGrabber grabber = new VideoInputFrameGrabber(deviceIndex);
-            grabber.setImageWidth(640);
-            grabber.setImageHeight(480);
-            System.out.println("Windows: Created VideoInput grabber for device index: " + deviceIndex);
-            return grabber;
-        } catch (Exception e) {
-            System.err.println("VideoInput grabber failed, falling back to OpenCV: " + e.getMessage());
-        }
-
-        // Fallback to OpenCVFrameGrabber
         OpenCVFrameGrabber grabber = new OpenCVFrameGrabber(deviceIndex);
+
+        // Set resolution
         grabber.setImageWidth(640);
         grabber.setImageHeight(480);
         
