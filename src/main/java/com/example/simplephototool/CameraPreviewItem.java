@@ -162,6 +162,26 @@ public class CameraPreviewItem extends VBox {
                         });
                     });
                     
+                    // Handle end of media by reconnecting to get fresh playlist with new segments
+                    mediaPlayer.setOnEndOfMedia(() -> {
+                        System.out.println("End of media for " + camera.getName() + ", reconnecting to stream...");
+                        Platform.runLater(() -> {
+                            if (running.get() && streamService != null) {
+                                reconnectToStream();
+                            }
+                        });
+                    });
+                    
+                    // Handle stall by reconnecting
+                    mediaPlayer.setOnStalled(() -> {
+                        System.out.println("Stream stalled for " + camera.getName() + ", reconnecting...");
+                        Platform.runLater(() -> {
+                            if (running.get() && streamService != null) {
+                                reconnectToStream();
+                            }
+                        });
+                    });
+                    
                     mediaPlayer.setOnError(() -> {
                         Throwable error = mediaPlayer.getError();
                         System.err.println("Media player error for " + camera.getName() + ": " + 
@@ -204,6 +224,67 @@ public class CameraPreviewItem extends VBox {
                 statusLabel.setText("⚠ Failed to Start");
                 statusLabel.setVisible(true);
             });
+        }
+    }
+    
+    /**
+     * Reconnects to the HLS stream to fetch fresh playlist with new segments.
+     * This is needed because JavaFX MediaPlayer doesn't auto-refresh HLS playlists.
+     */
+    private void reconnectToStream() {
+        if (!running.get() || streamService == null) {
+            return;
+        }
+        
+        // Dispose old player
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.dispose();
+            mediaPlayer = null;
+        }
+        media = null;
+        
+        try {
+            // Create fresh Media object to fetch updated playlist
+            String streamUrl = streamService.getStreamUrl();
+            media = new Media(streamUrl);
+            mediaPlayer = new MediaPlayer(media);
+            
+            mediaPlayer.setOnReady(() -> {
+                Platform.runLater(() -> {
+                    if (running.get()) {
+                        mediaView.setMediaPlayer(mediaPlayer);
+                        mediaPlayer.play();
+                    }
+                });
+            });
+            
+            // Recursive handlers for continuous streaming
+            mediaPlayer.setOnEndOfMedia(() -> {
+                Platform.runLater(() -> {
+                    if (running.get() && streamService != null) {
+                        reconnectToStream();
+                    }
+                });
+            });
+            
+            mediaPlayer.setOnStalled(() -> {
+                System.out.println("Stream stalled for " + camera.getName() + ", reconnecting...");
+                Platform.runLater(() -> {
+                    if (running.get() && streamService != null) {
+                        reconnectToStream();
+                    }
+                });
+            });
+            
+            mediaPlayer.setOnError(() -> {
+                Throwable error = mediaPlayer.getError();
+                System.err.println("Reconnect error for " + camera.getName() + ": " + 
+                        (error != null ? error.getMessage() : "Unknown"));
+            });
+            
+        } catch (Exception e) {
+            System.err.println("Failed to reconnect stream for " + camera.getName() + ": " + e.getMessage());
         }
     }
     

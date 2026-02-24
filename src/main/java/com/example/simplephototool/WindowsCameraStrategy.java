@@ -170,17 +170,15 @@ public class WindowsCameraStrategy implements CameraStrategy {
         command.add("aac");
         command.add("-b:a");
         command.add("64k");
-        // Use shortest input to stop when video ends
-        command.add("-shortest");
-        // HLS output settings
+        // HLS output settings for live streaming
         command.add("-f");
         command.add("hls");
         command.add("-hls_time");
-        command.add("1");
+        command.add("2");
         command.add("-hls_list_size");
-        command.add("3");
+        command.add("5");
         command.add("-hls_flags");
-        command.add("delete_segments+append_list");
+        command.add("delete_segments");
         command.add("-hls_segment_filename");
         command.add(hlsPath + "\\segment_%03d.ts");
         command.add(hlsPath + "\\stream.m3u8");
