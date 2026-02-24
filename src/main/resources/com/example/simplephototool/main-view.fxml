@@ -2,63 +2,44 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ListView?>
-<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.FlowPane?>
-<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-
-<AnchorPane minHeight="600.0" minWidth="900.0" prefHeight="700.0" prefWidth="1100.0" xmlns="http://javafx.com/javafx/17"
-            xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.simplephototool.MainController">
-    <AnchorPane maxHeight="40.0" minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0"
-                AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-        <ToolBar prefHeight="40.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
-                 AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-            <Button mnemonicParsing="false" text="Settings" onAction="#onSettings"/>
-            <Button mnemonicParsing="false" text="Start All Previews" onAction="#onStartAllPreviews"/>
-            <Button mnemonicParsing="false" text="Stop All Previews" onAction="#onStopAllPreviews"/>
+<AnchorPane minHeight="600.0" minWidth="900.0" prefHeight="700.0" prefWidth="1100.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.simplephototool.MainController">
+    <AnchorPane maxHeight="40.0" minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+        <ToolBar prefHeight="40.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <Button mnemonicParsing="false" onAction="#onSettings" text="Settings" />
+            <Button mnemonicParsing="false" onAction="#onStartAllPreviews" text="Start All Previews" />
+            <Button mnemonicParsing="false" onAction="#onStopAllPreviews" text="Stop All Previews" />
         </ToolBar>
     </AnchorPane>
-    <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0" AnchorPane.bottomAnchor="0.0"
-                AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="40.0">
-        <SplitPane dividerPositions="0.25" prefHeight="160.0" prefWidth="200.0"
-                   AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0"
-                   AnchorPane.topAnchor="0.0">
-            <AnchorPane minWidth="200.0" maxWidth="300.0">
-                <ListView fx:id="cameraList" prefHeight="200.0" prefWidth="200.0"
-                          AnchorPane.bottomAnchor="40.0" AnchorPane.leftAnchor="0.0"
-                          AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
-                <AnchorPane layoutY="398.0" maxHeight="40.0" AnchorPane.bottomAnchor="5.0"
-                            AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
-                    <VBox alignment="CENTER" prefHeight="25.0" prefWidth="252.0"
-                          AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
-                          AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                        <Button fx:id="addCamera" maxHeight="-Infinity" maxWidth="-Infinity"
-                                minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false"
-                                onAction="#onAddCamera"
-                                prefHeight="25.0" prefWidth="120.0" text="Add camera"/>
+    <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="100.0" prefWidth="160.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="40.0">
+        <SplitPane dividerPositions="0.25" prefHeight="160.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <AnchorPane maxWidth="300.0" minWidth="200.0">
+                <ListView fx:id="cameraList" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="40.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" />
+                <AnchorPane layoutY="398.0" maxHeight="40.0" AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
+                    <VBox alignment="CENTER" prefHeight="25.0" prefWidth="252.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                        <Button fx:id="addCamera" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" mnemonicParsing="false" onAction="#onAddCamera" prefHeight="25.0" prefWidth="120.0" text="Add camera" />
                     </VBox>
                 </AnchorPane>
             </AnchorPane>
             <AnchorPane>
-                <!-- Preview Grid Area -->
-                <ScrollPane fx:id="previewScrollPane" fitToWidth="true" 
-                            AnchorPane.topAnchor="0.0" AnchorPane.rightAnchor="0.0" 
-                            AnchorPane.bottomAnchor="50.0" AnchorPane.leftAnchor="0.0"
-                            style="-fx-background-color: #1a1a1a;">
-                    <FlowPane fx:id="previewGrid" hgap="10" vgap="10" 
-                              style="-fx-background-color: #1a1a1a; -fx-padding: 10;"/>
-                </ScrollPane>
-                <!-- Bottom Button Bar -->
-                <HBox alignment="CENTER" spacing="20" prefHeight="40.0"
-                      AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="0.0"
-                      AnchorPane.rightAnchor="0.0">
-                    <Button maxHeight="-Infinity" minHeight="-Infinity" mnemonicParsing="false"
-                            prefHeight="30.0" text="Take Snapshot (Enter)" onAction="#onTakeSnapshot"/>
-                </HBox>
+               <GridPane fx:id="previewGrid" gridLinesVisible="true" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                 <columnConstraints>
+                   <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                   <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                 </columnConstraints>
+                 <rowConstraints>
+                   <RowConstraints maxHeight="439.0" minHeight="0.0" prefHeight="167.0" vgrow="SOMETIMES" />
+                   <RowConstraints maxHeight="439.0" minHeight="0.0" prefHeight="213.0" vgrow="SOMETIMES" />
+                   <RowConstraints maxHeight="348.0" minHeight="10.0" prefHeight="257.0" vgrow="SOMETIMES" />
+                 </rowConstraints>
+               </GridPane>
             </AnchorPane>
         </SplitPane>
     </AnchorPane>

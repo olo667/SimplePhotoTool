@@ -1,247 +1,254 @@
 package com.example.simplephototool;
 
-import javafx.application.Platform;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
-import javafx.scene.layout.FlowPane;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Manages multiple camera preview tiles in a grid layout.
- * Handles resource limits and provides centralized control over all previews.
+ * Manages camera preview items for active cameras.
+ * Creates and maintains CameraPreviewItem instances for cameras with active checkbox ticked.
  */
 public class PreviewManager {
     
-    private static final int DEFAULT_MAX_CONCURRENT = 4;
-    
-    private final FlowPane container;
-    private final Map<String, PreviewTile> tiles = new ConcurrentHashMap<>();
     private final ObservableList<Camera> cameras;
     private Settings settings;
-    private int maxConcurrentPreviews;
-    private int runningCount = 0;
+    private final Map<String, CameraPreviewItem> previewItems = new HashMap<>();
+    
+    // Keep PreviewTile for backward compatibility
+    private final Map<String, PreviewTile> tiles = new HashMap<>();
+    
+    private TileSize currentTileSize = TileSize.MEDIUM;
     
     /**
-     * Creates a new PreviewManager with the specified settings.
+     * Creates a new PreviewManager.
      *
-     * @param cameras Observable list of cameras to manage
+     * @param cameras Observable list of cameras
      * @param settings Application settings
      */
     public PreviewManager(ObservableList<Camera> cameras, Settings settings) {
-        this(cameras, settings, DEFAULT_MAX_CONCURRENT);
-    }
-    
-    /**
-     * Creates a new PreviewManager with the specified settings and limits.
-     *
-     * @param cameras Observable list of cameras to manage
-     * @param settings Application settings
-     * @param maxConcurrentPreviews Maximum number of simultaneous previews
-     */
-    public PreviewManager(ObservableList<Camera> cameras, Settings settings, int maxConcurrentPreviews) {
         this.cameras = cameras;
         this.settings = settings;
-        this.maxConcurrentPreviews = maxConcurrentPreviews;
         
-        // Create the container FlowPane
-        container = new FlowPane();
-        container.setHgap(10);
-        container.setVgap(10);
-        container.setPadding(new Insets(10));
-        container.setStyle("-fx-background-color: #1a1a1a;");
+        // Build initial preview items for active cameras
+        refresh();
         
-        // Initial population
-        rebuildTiles();
-        
-        // Listen for camera list changes
+        // Listen for changes to the camera list
         cameras.addListener((ListChangeListener<Camera>) change -> {
             while (change.next()) {
-                if (change.wasAdded() || change.wasRemoved()) {
-                    Platform.runLater(this::rebuildTiles);
+                if (change.wasAdded() || change.wasRemoved() || change.wasUpdated()) {
+                    refresh();
                 }
             }
         });
     }
     
     /**
-     * Rebuilds all tiles from the camera list.
+     * Refreshes the preview items based on cameras with preview enabled.
      */
-    private void rebuildTiles() {
-        // Stop and remove old tiles
-        for (PreviewTile tile : tiles.values()) {
-            tile.dispose();
-        }
-        tiles.clear();
-        container.getChildren().clear();
-        runningCount = 0;
-        
-        // Create new tiles for each camera
+    public void refresh() {
+        // Create preview items for cameras with preview enabled that don't have one yet
         for (Camera camera : cameras) {
-            addTile(camera);
+            String deviceId = camera.getDeviceId();
+            
+            // Listen to previewEnabled property changes
+            camera.previewEnabledProperty().addListener((obs, wasEnabled, isEnabled) -> {
+                if (isEnabled && !previewItems.containsKey(deviceId)) {
+                    createPreviewItem(camera);
+                } else if (!isEnabled && previewItems.containsKey(deviceId)) {
+                    removePreviewItem(deviceId);
+                }
+            });
+            
+            if (camera.isPreviewEnabled() && !previewItems.containsKey(deviceId)) {
+                createPreviewItem(camera);
+            } else if (!camera.isPreviewEnabled() && previewItems.containsKey(deviceId)) {
+                removePreviewItem(deviceId);
+            }
+            
+            // Also create legacy PreviewTile for backward compatibility
+            if (!tiles.containsKey(deviceId)) {
+                PreviewTile tile = new PreviewTile(camera, settings, currentTileSize);
+                tiles.put(deviceId, tile);
+            }
+        }
+        
+        // Remove preview items for cameras that no longer exist
+        previewItems.keySet().removeIf(deviceId -> 
+            cameras.stream().noneMatch(c -> c.getDeviceId().equals(deviceId)));
+        tiles.keySet().removeIf(deviceId -> 
+            cameras.stream().noneMatch(c -> c.getDeviceId().equals(deviceId)));
+    }
+    
+    /**
+     * Creates a preview item for the specified camera.
+     */
+    private void createPreviewItem(Camera camera) {
+        CameraPreviewItem item = new CameraPreviewItem(camera, settings, currentTileSize);
+        previewItems.put(camera.getDeviceId(), item);
+    }
+    
+    /**
+     * Removes and disposes a preview item.
+     */
+    private void removePreviewItem(String deviceId) {
+        CameraPreviewItem item = previewItems.remove(deviceId);
+        if (item != null) {
+            item.dispose();
         }
     }
     
     /**
-     * Adds a tile for the specified camera.
+     * Gets all preview items for active cameras.
      *
-     * @param camera The camera to add
+     * @return Map of device ID to CameraPreviewItem
      */
-    private void addTile(Camera camera) {
-        PreviewTile tile = new PreviewTile(camera, settings);
-        
-        // Track running state for resource management
-        tile.runningProperty().addListener((obs, wasRunning, isRunning) -> {
-            if (isRunning) {
-                runningCount++;
-            } else {
-                runningCount = Math.max(0, runningCount - 1);
-            }
-        });
-        
-        tiles.put(camera.getDeviceId(), tile);
-        container.getChildren().add(tile);
+    public Map<String, CameraPreviewItem> getPreviewItems() {
+        return new HashMap<>(previewItems);
     }
     
     /**
-     * Gets the container node for embedding in the UI.
+     * Gets a specific preview item by device ID.
      *
-     * @return The FlowPane container
+     * @param deviceId The device ID
+     * @return The preview item, or null if not found
      */
-    public FlowPane getContainer() {
-        return container;
+    public CameraPreviewItem getPreviewItem(String deviceId) {
+        return previewItems.get(deviceId);
+    }
+    
+    /**
+     * Starts previews for all active cameras.
+     */
+    public void startAllPreviews() {
+        for (CameraPreviewItem item : previewItems.values()) {
+            if (!item.isRunning()) {
+                item.startPreview();
+            }
+        }
+    }
+    
+    /**
+     * Stops all running previews.
+     */
+    public void stopAllPreviews() {
+        for (CameraPreviewItem item : previewItems.values()) {
+            if (item.isRunning()) {
+                item.stopPreview();
+            }
+        }
+        
+        // Also stop legacy tiles
+        for (PreviewTile tile : tiles.values()) {
+            if (tile.isRunning()) {
+                tile.stopPreview();
+            }
+        }
+        
+        // Reset port counter when all streams are stopped
+        FFmpegStreamService.resetPortCounter();
     }
     
     /**
      * Starts preview for a specific camera.
      *
-     * @param deviceId The device ID to start
-     * @return true if started, false if at limit or not found
+     * @param deviceId The device ID
      */
-    public boolean startPreview(String deviceId) {
+    public void startPreview(String deviceId) {
+        CameraPreviewItem item = previewItems.get(deviceId);
+        if (item != null && !item.isRunning()) {
+            item.startPreview();
+        }
+        
+        // Also check legacy tiles
         PreviewTile tile = tiles.get(deviceId);
-        if (tile == null) {
-            return false;
+        if (tile != null && !tile.isRunning()) {
+            tile.startPreview();
         }
-        
-        if (runningCount >= maxConcurrentPreviews) {
-            System.out.println("Maximum concurrent previews reached (" + maxConcurrentPreviews + ")");
-            return false;
-        }
-        
-        tile.startPreview();
-        return true;
     }
     
     /**
      * Stops preview for a specific camera.
      *
-     * @param deviceId The device ID to stop
+     * @param deviceId The device ID
      */
     public void stopPreview(String deviceId) {
+        CameraPreviewItem item = previewItems.get(deviceId);
+        if (item != null && item.isRunning()) {
+            item.stopPreview();
+        }
+        
+        // Also check legacy tiles
         PreviewTile tile = tiles.get(deviceId);
-        if (tile != null) {
+        if (tile != null && tile.isRunning()) {
             tile.stopPreview();
         }
     }
     
     /**
-     * Starts all camera previews (up to the limit).
-     */
-    public void startAllPreviews() {
-        for (PreviewTile tile : tiles.values()) {
-            if (runningCount >= maxConcurrentPreviews) {
-                break;
-            }
-            if (!tile.isRunning()) {
-                tile.startPreview();
-            }
-        }
-    }
-    
-    /**
-     * Stops all camera previews.
-     */
-    public void stopAllPreviews() {
-        for (PreviewTile tile : tiles.values()) {
-            tile.stopPreview();
-        }
-    }
-    
-    /**
-     * Gets the number of currently running previews.
+     * Updates settings.
      *
-     * @return Running preview count
-     */
-    public int getRunningCount() {
-        return runningCount;
-    }
-    
-    /**
-     * Gets the maximum allowed concurrent previews.
-     *
-     * @return Maximum concurrent previews
-     */
-    public int getMaxConcurrentPreviews() {
-        return maxConcurrentPreviews;
-    }
-    
-    /**
-     * Sets the maximum allowed concurrent previews.
-     *
-     * @param max New maximum
-     */
-    public void setMaxConcurrentPreviews(int max) {
-        this.maxConcurrentPreviews = max;
-    }
-    
-    /**
-     * Updates settings for all tiles.
-     *
-     * @param settings New settings
+     * @param settings The new settings
      */
     public void setSettings(Settings settings) {
         this.settings = settings;
+        for (CameraPreviewItem item : previewItems.values()) {
+            item.setSettings(settings);
+        }
         for (PreviewTile tile : tiles.values()) {
             tile.setSettings(settings);
         }
     }
     
     /**
-     * Gets a tile by device ID.
+     * Sets the tile size for all preview items.
+     *
+     * @param size The new tile size
+     */
+    public void setTileSize(TileSize size) {
+        this.currentTileSize = size;
+        for (CameraPreviewItem item : previewItems.values()) {
+            item.setTileSize(size);
+        }
+        for (PreviewTile tile : tiles.values()) {
+            tile.setTileSize(size);
+        }
+    }
+    
+    /**
+     * Shuts down all resources.
+     */
+    public void shutdown() {
+        stopAllPreviews();
+        for (CameraPreviewItem item : previewItems.values()) {
+            item.dispose();
+        }
+        for (PreviewTile tile : tiles.values()) {
+            tile.dispose();
+        }
+        previewItems.clear();
+        tiles.clear();
+    }
+    
+    // Legacy methods for backward compatibility with PreviewTile
+    
+    /**
+     * Gets a preview tile by device ID (legacy).
      *
      * @param deviceId The device ID
-     * @return The tile or null if not found
+     * @return The preview tile
      */
     public PreviewTile getTile(String deviceId) {
         return tiles.get(deviceId);
     }
     
     /**
-     * Gets all tiles.
+     * Gets all preview tiles (legacy).
      *
-     * @return Map of device IDs to tiles
+     * @return Map of device ID to PreviewTile
      */
     public Map<String, PreviewTile> getTiles() {
         return new HashMap<>(tiles);
-    }
-    
-    /**
-     * Refreshes tiles (rebuilds from camera list).
-     */
-    public void refresh() {
-        Platform.runLater(this::rebuildTiles);
-    }
-    
-    /**
-     * Cleans up all resources.
-     */
-    public void shutdown() {
-        stopAllPreviews();
-        tiles.clear();
-        container.getChildren().clear();
     }
 }

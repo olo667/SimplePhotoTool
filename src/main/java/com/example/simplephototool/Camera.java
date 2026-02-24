@@ -12,6 +12,7 @@ public class Camera {
     private final StringProperty name = new SimpleStringProperty();
     private final StringProperty deviceId = new SimpleStringProperty();
     private final BooleanProperty active = new SimpleBooleanProperty(true);
+    private final BooleanProperty previewEnabled = new SimpleBooleanProperty(false);
     private final StringProperty resolution = new SimpleStringProperty();
 
     public Camera(String name) {
@@ -77,6 +78,19 @@ public class Camera {
 
     public BooleanProperty activeProperty() {
         return active;
+    }
+
+    // PreviewEnabled property
+    public boolean isPreviewEnabled() {
+        return previewEnabled.get();
+    }
+
+    public void setPreviewEnabled(boolean previewEnabled) {
+        this.previewEnabled.set(previewEnabled);
+    }
+
+    public BooleanProperty previewEnabledProperty() {
+        return previewEnabled;
     }
 
     // Resolution property

@@ -9,8 +9,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.control.ToggleGroup;
-import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.GridPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -25,13 +24,12 @@ public class MainController {
     private Button addCamera;
 
     @FXML
-    private FlowPane previewGrid;
+    private GridPane previewGrid;
     
     @FXML
     private ScrollPane previewScrollPane;
 
     private ObservableList<Camera> cameras = FXCollections.observableArrayList();
-    private ToggleGroup previewToggleGroup = new ToggleGroup();
     private PreviewManager previewManager;
     private Settings settings;
 
@@ -46,16 +44,15 @@ public class MainController {
         cameraList.setCellFactory(listView -> new CameraListCell(
             this::deleteCamera, 
             this::editCamera, 
-            previewToggleGroup, 
             this::onPreviewSelected
         ));
 
         // Initialize preview manager with camera list
         previewManager = new PreviewManager(cameras, settings);
         
-        // Replace the FXML FlowPane content with PreviewManager's tiles
+        // Populate the grid with preview items for cameras with preview enabled
         rebuildPreviewGrid();
-        
+
         // Listen for camera list changes to update grid
         cameras.addListener((ListChangeListener<Camera>) change -> {
             while (change.next()) {
@@ -65,17 +62,44 @@ public class MainController {
                 }
             }
         });
+        
+        // Listen for previewEnabled property changes on each camera
+        for (Camera camera : cameras) {
+            camera.previewEnabledProperty().addListener((obs, wasEnabled, isEnabled) -> {
+                previewManager.refresh();
+                rebuildPreviewGrid();
+            });
+        }
     }
-    
+
     /**
-     * Rebuilds the preview grid from the PreviewManager.
+     * Rebuilds the preview grid with CameraPreviewItems for cameras with preview enabled.
+     * Items are arranged in a grid with 2 columns.
      */
     private void rebuildPreviewGrid() {
         previewGrid.getChildren().clear();
+        
+        int col = 0;
+        int row = 0;
+        int maxCols = 2; // Number of columns in the grid
+        
         for (Camera camera : cameras) {
-            PreviewTile tile = previewManager.getTile(camera.getDeviceId());
-            if (tile != null && !previewGrid.getChildren().contains(tile)) {
-                previewGrid.getChildren().add(tile);
+            // Only show preview items for cameras with preview enabled (previewActive checkbox ticked)
+            if (!camera.isPreviewEnabled()) {
+                continue;
+            }
+            
+            CameraPreviewItem item = previewManager.getPreviewItem(camera.getDeviceId());
+            if (item != null && !previewGrid.getChildren().contains(item)) {
+                GridPane.setColumnIndex(item, col);
+                GridPane.setRowIndex(item, row);
+                previewGrid.getChildren().add(item);
+                
+                col++;
+                if (col >= maxCols) {
+                    col = 0;
+                    row++;
+                }
             }
         }
     }
@@ -99,6 +123,11 @@ public class MainController {
             Camera newCamera = controller.getResult();
             
             if (newCamera != null) {
+                // Add listener for previewEnabled property changes
+                newCamera.previewEnabledProperty().addListener((obs, wasEnabled, isEnabled) -> {
+                    previewManager.refresh();
+                    rebuildPreviewGrid();
+                });
                 cameras.add(newCamera);
                 saveCameras();
             }

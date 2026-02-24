@@ -55,7 +55,9 @@ public class SettingsManager {
                         String name = parts[0];
                         String deviceId = parts[1];
                         boolean active = parts.length >= 3 ? Boolean.parseBoolean(parts[2]) : true;
+                        boolean previewEnabled = parts.length >= 4 ? Boolean.parseBoolean(parts[3]) : false;
                         Camera camera = new Camera(name, deviceId, active);
+                        camera.setPreviewEnabled(previewEnabled);
                         cameras.add(camera);
                     }
                 }
@@ -93,7 +95,7 @@ public class SettingsManager {
         // Save cameras
         List<String> lines = new ArrayList<>();
         for (Camera camera : settings.getCameras()) {
-            lines.add(camera.getName() + "|" + camera.getDeviceId() + "|" + camera.isActive());
+            lines.add(camera.getName() + "|" + camera.getDeviceId() + "|" + camera.isActive() + "|" + camera.isPreviewEnabled());
         }
         Files.write(Paths.get(CAMERA_FILE), lines);
     }

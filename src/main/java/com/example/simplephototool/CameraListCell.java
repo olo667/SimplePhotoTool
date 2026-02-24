@@ -2,7 +2,6 @@ package com.example.simplephototool;
 
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.ListCell;
-import javafx.scene.control.ToggleGroup;
 
 import java.io.IOException;
 import java.util.function.Consumer;
@@ -14,14 +13,12 @@ public class CameraListCell extends ListCell<Camera> {
     private CameraListItemController controller;
     private final Consumer<Camera> onDeleteCallback;
     private final Consumer<Camera> onEditCallback;
-    private final ToggleGroup previewToggleGroup;
     private final Consumer<Camera> onPreviewCallback;
 
     public CameraListCell(Consumer<Camera> onDeleteCallback, Consumer<Camera> onEditCallback, 
-                          ToggleGroup previewToggleGroup, Consumer<Camera> onPreviewCallback) {
+                          Consumer<Camera> onPreviewCallback) {
         this.onDeleteCallback = onDeleteCallback;
         this.onEditCallback = onEditCallback;
-        this.previewToggleGroup = previewToggleGroup;
         this.onPreviewCallback = onPreviewCallback;
     }
 
@@ -43,7 +40,6 @@ public class CameraListCell extends ListCell<Camera> {
                 controller.setOnDeleteCallback(onDeleteCallback);
                 controller.setOnEditCallback(onEditCallback);
                 controller.setOnPreviewCallback(onPreviewCallback);
-                controller.setToggleGroup(previewToggleGroup);
                 setGraphic(controller.getRootPane());
             } catch (IOException e) {
                 e.printStackTrace();

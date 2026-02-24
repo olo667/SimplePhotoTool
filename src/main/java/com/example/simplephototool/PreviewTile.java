@@ -3,34 +3,30 @@ package com.example.simplephototool;
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
-import javafx.embed.swing.SwingFXUtils;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.image.PixelFormat;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.FrameGrabber;
-import org.bytedeco.javacv.Java2DFrameConverter;
 
-import java.awt.image.BufferedImage;
+import java.io.BufferedInputStream;
+import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A tile component that displays a camera preview with click-to-toggle functionality.
- * Each tile manages its own preview thread for the associated camera.
+ * Each tile manages its own preview thread using FFmpeg for the associated camera.
  */
 public class PreviewTile extends VBox {
     
-    private static final double TILE_WIDTH = 320;
-    private static final double TILE_HEIGHT = 240;
     private static final int THUMBNAIL_FPS = 15;
     
     private final Camera camera;
+    private Settings settings;
     private final ImageView imageView;
     private final Label nameLabel;
     private final Label statusLabel;
@@ -42,71 +38,91 @@ public class PreviewTile extends VBox {
     
     private Thread previewThread;
     private final AtomicBoolean shouldRun = new AtomicBoolean(false);
-    private FrameGrabber grabber;
+    private Process ffmpegProcess;
     private final CameraStrategy strategy;
-    private Settings settings;
     
+    private double tileWidth;
+    private double tileHeight;
+
+    /**
+     * Creates a new preview tile for the specified camera with default size.
+     *
+     * @param camera The camera to preview
+     * @param settings Application settings
+     */
+    public PreviewTile(Camera camera, Settings settings) {
+        this(camera, settings, TileSize.MEDIUM);
+    }
+
     /**
      * Creates a new preview tile for the specified camera.
      *
      * @param camera The camera to preview
-     * @param settings Application settings for resolution
+     * @param settings Application settings
+     * @param size The tile size
      */
-    public PreviewTile(Camera camera, Settings settings) {
+    public PreviewTile(Camera camera, Settings settings, TileSize size) {
         this.camera = camera;
         this.settings = settings;
         this.strategy = CameraStrategyFactory.getStrategy();
+        this.tileWidth = size.getWidth();
+        this.tileHeight = size.getHeight();
         
-        // Set up the container
-        setAlignment(Pos.CENTER);
         setSpacing(5);
-        setPadding(new Insets(5));
-        getStyleClass().add("preview-tile");
+        setAlignment(Pos.CENTER);
         
-        // Create preview container with overlay
+        // Preview container
         previewContainer = new StackPane();
-        previewContainer.setPrefSize(TILE_WIDTH, TILE_HEIGHT);
-        previewContainer.setMaxSize(TILE_WIDTH, TILE_HEIGHT);
-        previewContainer.setMinSize(TILE_WIDTH, TILE_HEIGHT);
+        previewContainer.setPrefSize(tileWidth, tileHeight);
+        previewContainer.setMaxSize(tileWidth, tileHeight);
+        previewContainer.setMinSize(tileWidth, tileHeight);
         previewContainer.setStyle("-fx-background-color: #2a2a2a; -fx-border-color: #444; -fx-border-width: 2;");
         
-        // Image view for preview frames
+        // ImageView for video frames
         imageView = new ImageView();
-        imageView.setFitWidth(TILE_WIDTH - 4);
-        imageView.setFitHeight(TILE_HEIGHT - 4);
+        imageView.setFitWidth(tileWidth - 4);
+        imageView.setFitHeight(tileHeight - 4);
         imageView.setPreserveRatio(true);
         
         // Semi-transparent overlay for stopped state
-        overlay = new Rectangle(TILE_WIDTH - 4, TILE_HEIGHT - 4);
+        overlay = new Rectangle(tileWidth - 4, tileHeight - 4);
         overlay.setFill(Color.rgb(0, 0, 0, 0.6));
         overlay.setVisible(true);
         
-        // Status label (shows Play icon or Running)
+        // Status label
         statusLabel = new Label("▶ Click to Start");
-        statusLabel.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+        statusLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
+        statusLabel.setWrapText(true);
+        statusLabel.setMaxWidth(tileWidth - 20);
+        statusLabel.setAlignment(Pos.CENTER);
         
         previewContainer.getChildren().addAll(imageView, overlay, statusLabel);
         StackPane.setAlignment(statusLabel, Pos.CENTER);
         
         // Camera name label
         nameLabel = new Label(camera.getName());
-        nameLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold;");
-        nameLabel.setMaxWidth(TILE_WIDTH);
+        nameLabel.setStyle(
+            "-fx-font-size: 14px; " +
+            "-fx-font-weight: bold; " +
+            "-fx-text-fill: white; " +
+            "-fx-background-color: rgba(0, 0, 0, 0.7); " +
+            "-fx-padding: 5 10 5 10; " +
+            "-fx-background-radius: 3;"
+        );
+        nameLabel.setMaxWidth(tileWidth);
         nameLabel.setAlignment(Pos.CENTER);
         
         getChildren().addAll(previewContainer, nameLabel);
         
         // Click handler to toggle preview
         previewContainer.setOnMouseClicked(event -> togglePreview());
+        previewContainer.setStyle(previewContainer.getStyle() + "-fx-cursor: hand;");
         
-        // Update visual state when running changes
+        // Update visuals when running state changes
         running.addListener((obs, wasRunning, isRunning) -> updateVisualState());
         selected.addListener((obs, wasSelected, isSelected) -> updateBorder());
-        
-        // Set cursor to indicate clickable
-        previewContainer.setStyle(previewContainer.getStyle() + "-fx-cursor: hand;");
     }
-    
+
     /**
      * Toggles the preview on/off.
      */
@@ -117,9 +133,9 @@ public class PreviewTile extends VBox {
             startPreview();
         }
     }
-    
+
     /**
-     * Starts the camera preview.
+     * Starts the camera preview using FFmpeg.
      */
     public void startPreview() {
         if (running.get()) {
@@ -130,53 +146,57 @@ public class PreviewTile extends VBox {
         running.set(true);
         
         previewThread = new Thread(() -> {
-            Java2DFrameConverter converter = null;
             long frameInterval = 1000 / THUMBNAIL_FPS;
             
             try {
-                // Get resolution settings
-                String resolution = camera.getEffectiveResolution(settings.getDefaultResolution());
-                int[] dimensions = Settings.parseResolution(resolution);
+                ProcessBuilder pb = strategy.buildFFmpegCommand(camera, settings);
+                pb.redirectErrorStream(false);
+                ffmpegProcess = pb.start();
                 
-                // Use lower resolution for thumbnails
-                int width = 640;
-                int height = 480;
-                if (dimensions != null) {
-                    width = Math.min(dimensions[0], 640);
-                    height = Math.min(dimensions[1], 480);
-                }
+                InputStream inputStream = new BufferedInputStream(ffmpegProcess.getInputStream());
                 
-                grabber = strategy.createGrabber(camera.getDeviceId(), width, height);
-                grabber.start();
+                // Get resolution
+                int[] dimensions = strategy.getResolution(camera, settings);
+                int width = (dimensions != null) ? dimensions[0] : 640;
+                int height = (dimensions != null) ? dimensions[1] : 480;
+                int bytesPerPixel = strategy.getBytesPerPixel();
+                int frameSize = width * height * bytesPerPixel;
                 
-                converter = new Java2DFrameConverter();
+                byte[] frameBuffer = new byte[frameSize];
+                WritableImage writableImage = new WritableImage(width, height);
+                PixelFormat<java.nio.ByteBuffer> pixelFormat = PixelFormat.getByteRgbInstance();
+                
                 long lastFrameTime = 0;
                 
                 while (shouldRun.get()) {
                     long currentTime = System.currentTimeMillis();
                     
+                    // Read frame
+                    int bytesRead = readFully(inputStream, frameBuffer);
+                    if (bytesRead < frameSize) {
+                        break; // End of stream
+                    }
+
                     // Frame rate limiting
                     if (currentTime - lastFrameTime < frameInterval) {
-                        Thread.sleep(5);
                         continue;
                     }
                     
-                    Frame frame = grabber.grab();
-                    if (frame == null || frame.image == null) {
-                        Thread.sleep(10);
-                        continue;
-                    }
-                    
-                    BufferedImage buffered = converter.getBufferedImage(frame);
-                    if (buffered != null) {
-                        Image fxImage = SwingFXUtils.toFXImage(buffered, null);
-                        Platform.runLater(() -> {
-                            if (shouldRun.get()) {
-                                imageView.setImage(fxImage);
-                            }
-                        });
-                    }
-                    
+                    // Convert byte array to JavaFX image and update UI
+                    byte[] frameCopy = frameBuffer.clone();
+                    Platform.runLater(() -> {
+                        if (shouldRun.get()) {
+                            try {
+                                writableImage.getPixelWriter().setPixels(
+                                    0, 0, width, height,
+                                    pixelFormat,
+                                    frameCopy, 0, width * bytesPerPixel
+                                );
+                                imageView.setImage(writableImage);
+                            } catch (Exception ignored) {}
+                        }
+                    });
+
                     lastFrameTime = currentTime;
                 }
             } catch (Exception e) {
@@ -186,18 +206,10 @@ public class PreviewTile extends VBox {
                     statusLabel.setVisible(true);
                 });
             } finally {
-                if (converter != null) {
-                    try {
-                        converter.close();
-                    } catch (Exception ignored) {}
+                if (ffmpegProcess != null && ffmpegProcess.isAlive()) {
+                    ffmpegProcess.destroy();
                 }
-                if (grabber != null) {
-                    try {
-                        grabber.stop();
-                        grabber.close();
-                    } catch (Exception ignored) {}
-                }
-                grabber = null;
+                ffmpegProcess = null;
             }
         });
         
@@ -207,11 +219,31 @@ public class PreviewTile extends VBox {
     }
     
     /**
+     * Reads exactly the requested number of bytes from the input stream.
+     */
+    private int readFully(InputStream in, byte[] buffer) throws java.io.IOException {
+        int totalRead = 0;
+        while (totalRead < buffer.length) {
+            int bytesRead = in.read(buffer, totalRead, buffer.length - totalRead);
+            if (bytesRead == -1) {
+                return totalRead;
+            }
+            totalRead += bytesRead;
+        }
+        return totalRead;
+    }
+
+    /**
      * Stops the camera preview.
      */
     public void stopPreview() {
         shouldRun.set(false);
         
+        // Terminate FFmpeg process
+        if (ffmpegProcess != null && ffmpegProcess.isAlive()) {
+            ffmpegProcess.destroy();
+        }
+
         if (previewThread != null) {
             try {
                 previewThread.join(1000);
@@ -225,6 +257,13 @@ public class PreviewTile extends VBox {
         imageView.setImage(null);
     }
     
+    /**
+     * Disposes of all resources used by this tile.
+     */
+    public void dispose() {
+        stopPreview();
+    }
+
     /**
      * Updates the visual state based on running status.
      */
@@ -255,6 +294,31 @@ public class PreviewTile extends VBox {
     }
     
     /**
+     * Updates the tile size dynamically.
+     *
+     * @param size New tile size
+     */
+    public void setTileSize(TileSize size) {
+        this.tileWidth = size.getWidth();
+        this.tileHeight = size.getHeight();
+
+        Platform.runLater(() -> {
+            previewContainer.setPrefSize(tileWidth, tileHeight);
+            previewContainer.setMaxSize(tileWidth, tileHeight);
+            previewContainer.setMinSize(tileWidth, tileHeight);
+
+            imageView.setFitWidth(tileWidth - 4);
+            imageView.setFitHeight(tileHeight - 4);
+
+            overlay.setWidth(tileWidth - 4);
+            overlay.setHeight(tileHeight - 4);
+
+            statusLabel.setMaxWidth(tileWidth - 20);
+            nameLabel.setMaxWidth(tileWidth);
+        });
+    }
+    
+    /**
      * Updates the settings reference.
      *
      * @param settings New settings
@@ -263,45 +327,27 @@ public class PreviewTile extends VBox {
         this.settings = settings;
     }
     
-    // Property accessors
-    
     public Camera getCamera() {
         return camera;
-    }
-    
-    public boolean isRunning() {
-        return running.get();
     }
     
     public BooleanProperty runningProperty() {
         return running;
     }
     
+    public boolean isRunning() {
+        return running.get();
+    }
+
+    public BooleanProperty selectedProperty() {
+        return selected;
+    }
+
     public boolean isSelected() {
         return selected.get();
     }
     
     public void setSelected(boolean selected) {
         this.selected.set(selected);
-    }
-    
-    public BooleanProperty selectedProperty() {
-        return selected;
-    }
-    
-    /**
-     * Gets the current preview image.
-     *
-     * @return The current image or null if not running
-     */
-    public Image getCurrentImage() {
-        return imageView.getImage();
-    }
-    
-    /**
-     * Cleans up resources when the tile is removed.
-     */
-    public void dispose() {
-        stopPreview();
     }
 }

@@ -8,6 +8,12 @@ target/
 .idea/jarRepositories.xml
 .idea/compiler.xml
 .idea/libraries/
+.idea/workspace.xml
+.idea/copilot*.xml
+.idea/encodings.xml
+.idea/misc.xml
+.idea/vcs.xml
+.idea/checkstyle-idea.xml
 *.iws
 *.iml
 *.ipr

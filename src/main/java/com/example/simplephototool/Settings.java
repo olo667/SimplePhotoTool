@@ -10,6 +10,7 @@ public class Settings {
     private String snapshotOutputDirectory;
     private String filenamePattern;
     private String defaultResolution;
+    private Boolean verboseOutput;
     private List<Camera> cameras;
 
     /** Common resolution options available for cameras */
@@ -30,6 +31,7 @@ public class Settings {
         this.snapshotOutputDirectory = System.getProperty("user.home") + "/Pictures/SimplePhotoTool";
         this.filenamePattern = "camera-{id}_{timestamp}.jpg";
         this.defaultResolution = DEFAULT_RESOLUTION;
+        this.verboseOutput = false;
         this.cameras = new ArrayList<>();
     }
 
@@ -67,21 +69,19 @@ public class Settings {
 
     /**
      * Parses a resolution string into width and height.
+     *
      * @param resolution Resolution string in format "WIDTHxHEIGHT"
      * @return int array with [width, height], or null if parsing fails
      */
     public static int[] parseResolution(String resolution) {
-        if (resolution == null || resolution.isEmpty()) {
-            return null;
-        }
-        try {
-            String[] parts = resolution.toLowerCase().split("x");
-            if (parts.length == 2) {
-                return new int[] { Integer.parseInt(parts[0].trim()), Integer.parseInt(parts[1].trim()) };
-            }
-        } catch (NumberFormatException e) {
-            System.err.println("Failed to parse resolution: " + resolution);
-        }
         return null;
+    }
+
+    public boolean getVerboseOutput() {
+        return verboseOutput;
+    }
+
+    public void setVerboseOutput(boolean verboseOutput) {
+        this.verboseOutput = verboseOutput;
     }
 }

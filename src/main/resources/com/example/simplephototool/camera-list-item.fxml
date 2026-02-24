@@ -5,32 +5,21 @@
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Priority?>
 
-<?import javafx.scene.control.RadioButton?>
-<HBox fx:id="rootPane" alignment="CENTER_LEFT" spacing="10.0"
-      xmlns="http://javafx.com/javafx/17"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.example.simplephototool.CameraListItemController">
+<HBox fx:id="rootPane" alignment="CENTER_LEFT" spacing="10.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.simplephototool.CameraListItemController">
     <padding>
-        <Insets bottom="5.0" left="10.0" right="10.0" top="5.0"/>
+        <Insets bottom="5.0" left="10.0" right="10.0" top="5.0" />
     </padding>
-    
-    <!-- Preview selector -->
-    <RadioButton fx:id="previewRadio" mnemonicParsing="false"/>
+   <CheckBox fx:id="previewActive" mnemonicParsing="false" text="Preview" />
     <!-- Active/Inactive toggle -->
-    <CheckBox fx:id="activeCheckBox" mnemonicParsing="false" onAction="#onActiveToggle"/>
+    <CheckBox fx:id="activeCheckBox" mnemonicParsing="false" onAction="#onActiveToggle" />
     
     <!-- Camera name label -->
-    <Label fx:id="cameraNameLabel" text="Camera Name" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+    <Label fx:id="cameraNameLabel" maxWidth="Infinity" text="Camera Name" HBox.hgrow="ALWAYS" />
     
     <!-- Edit button -->
-    <Button fx:id="editButton" mnemonicParsing="false" onAction="#onEdit" 
-            text="✎" styleClass="edit-button"
-            prefWidth="25.0" prefHeight="25.0"/>
+    <Button fx:id="editButton" mnemonicParsing="false" onAction="#onEdit" prefHeight="25.0" prefWidth="25.0" styleClass="edit-button" text="E" />
     
     <!-- Delete button -->
-    <Button fx:id="deleteButton" mnemonicParsing="false" onAction="#onDelete" 
-            text="✕" styleClass="delete-button"
-            prefWidth="25.0" prefHeight="25.0"/>
+    <Button fx:id="deleteButton" mnemonicParsing="false" onAction="#onDelete" prefHeight="25.0" prefWidth="25.0" styleClass="delete-button" text="D" />
 </HBox>

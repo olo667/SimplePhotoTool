@@ -4,8 +4,6 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.RadioButton;
-import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 
 import java.util.function.Consumer;
@@ -18,6 +16,9 @@ public class CameraListItemController {
     private HBox rootPane;
 
     @FXML
+    private CheckBox previewActive;
+
+    @FXML
     private CheckBox activeCheckBox;
 
     @FXML
@@ -28,8 +29,6 @@ public class CameraListItemController {
 
     @FXML
     private Button deleteButton;
-    @FXML
-    private RadioButton previewRadio;
 
     private Camera camera;
     private Consumer<Camera> onDeleteCallback;
@@ -44,9 +43,11 @@ public class CameraListItemController {
         if (camera != null) {
             cameraNameLabel.setText(camera.getName());
             activeCheckBox.setSelected(camera.isActive());
+            previewActive.setSelected(camera.isPreviewEnabled());
             
-            // Bind the checkbox to the camera's active property
+            // Bind the checkboxes to the camera's properties
             activeCheckBox.selectedProperty().bindBidirectional(camera.activeProperty());
+            previewActive.selectedProperty().bindBidirectional(camera.previewEnabledProperty());
             
             // Update visual style based on active state
             updateActiveStyle();
@@ -67,21 +68,25 @@ public class CameraListItemController {
         this.onEditCallback = callback;
     }
 
+    /**
+     * Sets the callback to be invoked when the preview checkbox state changes.
+     */
     public void setOnPreviewCallback(Consumer<Camera> callback) {
         this.onPreviewCallback = callback;
-        if (previewRadio != null) {
-            previewRadio.setOnAction(e -> {
-                if (previewRadio.isSelected() && onPreviewCallback != null) {
+        if (previewActive != null) {
+            previewActive.setOnAction(e -> {
+                if (onPreviewCallback != null) {
                     onPreviewCallback.accept(camera);
                 }
             });
         }
     }
 
-    public void setToggleGroup(ToggleGroup group) {
-        if (previewRadio != null) {
-            previewRadio.setToggleGroup(group);
-        }
+    /**
+     * Gets whether the preview checkbox is selected.
+     */
+    public boolean isPreviewActive() {
+        return previewActive != null && previewActive.isSelected();
     }
 
     @FXML
