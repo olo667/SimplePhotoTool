@@ -16,6 +16,18 @@
         </configuration>
       </plugin>
       <plugin>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.1</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <artifactId>maven-jar-plugin</artifactId>
         <version>3.3.0</version>
         <configuration>
@@ -51,56 +63,7 @@
         <artifactId>javafx-maven-plugin</artifactId>
         <version>0.0.8</version>
         <configuration>
-          <mainClass>com.example.simplephototool/com.example.simplephototool.Launcher</mainClass>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>3.5.1</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <shadedArtifactAttached>true</shadedArtifactAttached>
-              <shadedClassifierName>full</shadedClassifierName>
-              <transformers>
-                <transformer>
-                  <mainClass>com.example.simplephototool.Launcher</mainClass>
-                </transformer>
-                <transformer />
-              </transformers>
-              <filters>
-                <filter>
-                  <artifact>*:*</artifact>
-                  <excludes>
-                    <exclude>META-INF/*.SF</exclude>
-                    <exclude>META-INF/*.DSA</exclude>
-                    <exclude>META-INF/*.RSA</exclude>
-                    <exclude>module-info.class</exclude>
-                  </excludes>
-                </filter>
-              </filters>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.panteleyev</groupId>
-        <artifactId>jpackage-maven-plugin</artifactId>
-        <version>1.6.5</version>
-        <configuration>
-          <name>SimplePhotoTool</name>
-          <appVersion>1.0.0</appVersion>
-          <vendor>SimplePhotoTool</vendor>
-          <destination>${project.build.directory}/dist</destination>
-          <input>${project.build.directory}/input</input>
-          <mainJar>SimplePhotoTool-1.0-SNAPSHOT.jar</mainJar>
-          <winDirChooser>true</winDirChooser>
-          <winShortcut>true</winShortcut>
-          <winMenu>true</winMenu>
+          <mainClass>com.example.simplephototool.Launcher</mainClass>
         </configuration>
       </plugin>
     </plugins>
@@ -146,6 +109,5 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>5.10.2</junit.version>
-    <javacv.version>1.5.8</javacv.version>
   </properties>
 </project>
