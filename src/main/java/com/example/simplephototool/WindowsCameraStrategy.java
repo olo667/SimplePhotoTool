@@ -87,10 +87,18 @@ public class WindowsCameraStrategy implements CameraStrategy {
         String outputPath = settings.getSnapshotOutputDirectory() +"\\" + generateFilename(camera, settings.getFilenamePattern());
 
         String deviceName = camera.getDeviceId();
+        
+        // Get resolution from camera/settings - scale on output since virtual cameras
+        // may not support arbitrary input resolutions
+        int[] dimensions = getResolution(camera, settings);
+        int width = (dimensions != null) ? dimensions[0] : 640;
+        int height = (dimensions != null) ? dimensions[1] : 480;
 
         List<String> command = new ArrayList<>(ffmpegDshow);
         command.add("-i");
         command.add("video=" + deviceName);
+        command.add("-vf");
+        command.add("scale=" + width + ":" + height);
         command.add("-frames:v");
         command.add("1");
         command.add("-y"); // Overwrite output file

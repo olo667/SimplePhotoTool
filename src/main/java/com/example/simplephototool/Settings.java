@@ -74,6 +74,19 @@ public class Settings {
      * @return int array with [width, height], or null if parsing fails
      */
     public static int[] parseResolution(String resolution) {
+        if (resolution == null || resolution.isEmpty()) {
+            return null;
+        }
+        try {
+            String[] parts = resolution.toLowerCase().split("x");
+            if (parts.length == 2) {
+                int width = Integer.parseInt(parts[0].trim());
+                int height = Integer.parseInt(parts[1].trim());
+                return new int[] { width, height };
+            }
+        } catch (NumberFormatException e) {
+            // Invalid format
+        }
         return null;
     }
 

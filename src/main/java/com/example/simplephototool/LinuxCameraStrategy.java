@@ -65,10 +65,18 @@ public class LinuxCameraStrategy implements CameraStrategy {
         // Use ffmpeg v4l2 for snapshot capture on Linux
         String outputPath = settings.getSnapshotOutputDirectory() + "/" + generateFilename(camera, settings.getFilenamePattern());
         String deviceId = camera.getDeviceId();
+        
+        // Get resolution from camera/settings - scale on output since virtual cameras
+        // may not support arbitrary input resolutions
+        int[] dimensions = getResolution(camera, settings);
+        int width = (dimensions != null) ? dimensions[0] : 640;
+        int height = (dimensions != null) ? dimensions[1] : 480;
 
         List<String> command = new ArrayList<>(ffmpegV4l2);
         command.add("-i");
         command.add(deviceId);
+        command.add("-vf");
+        command.add("scale=" + width + ":" + height);
         command.add("-frames:v");
         command.add("1");
         command.add("-y"); // Overwrite output file
