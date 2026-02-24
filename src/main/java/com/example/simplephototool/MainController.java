@@ -9,7 +9,10 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.RowConstraints;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -74,17 +77,51 @@ public class MainController {
 
     /**
      * Rebuilds the preview grid with CameraPreviewItems for cameras with preview enabled.
-     * Items are arranged in a grid with 2 columns.
+     * Dynamically calculates columns and rows based on the number of enabled previews.
      */
     private void rebuildPreviewGrid() {
         previewGrid.getChildren().clear();
+        previewGrid.getColumnConstraints().clear();
+        previewGrid.getRowConstraints().clear();
         
+        // Count cameras with preview enabled
+        int enabledCount = 0;
+        for (Camera camera : cameras) {
+            if (camera.isPreviewEnabled()) {
+                enabledCount++;
+            }
+        }
+        
+        if (enabledCount == 0) {
+            return;
+        }
+        
+        // Calculate optimal grid layout
+        int cols = calculateOptimalColumns(enabledCount);
+        int rows = (int) Math.ceil((double) enabledCount / cols);
+        
+        // Create column constraints
+        for (int i = 0; i < cols; i++) {
+            ColumnConstraints colConstraint = new ColumnConstraints();
+            colConstraint.setHgrow(Priority.SOMETIMES);
+            colConstraint.setMinWidth(10);
+            colConstraint.setPercentWidth(100.0 / cols);
+            previewGrid.getColumnConstraints().add(colConstraint);
+        }
+        
+        // Create row constraints
+        for (int i = 0; i < rows; i++) {
+            RowConstraints rowConstraint = new RowConstraints();
+            rowConstraint.setVgrow(Priority.SOMETIMES);
+            rowConstraint.setMinHeight(10);
+            previewGrid.getRowConstraints().add(rowConstraint);
+        }
+        
+        // Add preview items to the grid
         int col = 0;
         int row = 0;
-        int maxCols = 2; // Number of columns in the grid
         
         for (Camera camera : cameras) {
-            // Only show preview items for cameras with preview enabled (previewActive checkbox ticked)
             if (!camera.isPreviewEnabled()) {
                 continue;
             }
@@ -96,11 +133,27 @@ public class MainController {
                 previewGrid.getChildren().add(item);
                 
                 col++;
-                if (col >= maxCols) {
+                if (col >= cols) {
                     col = 0;
                     row++;
                 }
             }
+        }
+    }
+    
+    /**
+     * Calculates the optimal number of columns based on the number of items.
+     * Uses a simple heuristic: 1 item = 1 col, 2-4 items = 2 cols, 5+ items = 3 cols.
+     */
+    private int calculateOptimalColumns(int itemCount) {
+        if (itemCount <= 1) {
+            return 1;
+        } else if (itemCount <= 4) {
+            return 2;
+        } else if (itemCount <= 9) {
+            return 3;
+        } else {
+            return 4;
         }
     }
 

@@ -145,7 +145,7 @@ public class WindowsCameraStrategy implements CameraStrategy {
         command.add("-f");
         command.add("dshow");
         command.add("-rtbufsize");
-        command.add("100M");
+        command.add("20M");
         command.add("-i");
         command.add("video=" + deviceId);
         // Silent audio input (required by JavaFX HLS)
@@ -182,9 +182,9 @@ public class WindowsCameraStrategy implements CameraStrategy {
         command.add("-f");
         command.add("hls");
         command.add("-hls_time");
-        command.add("2");
+        command.add("1");
         command.add("-hls_list_size");
-        command.add("5");
+        command.add("3");
         command.add("-hls_flags");
         command.add("delete_segments");
         command.add("-hls_segment_filename");

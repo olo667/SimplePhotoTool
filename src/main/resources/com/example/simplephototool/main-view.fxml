@@ -30,23 +30,10 @@
                 </AnchorPane>
             </AnchorPane>
             <AnchorPane>
-               <GridPane fx:id="previewGrid" gridLinesVisible="true" hgap="10" vgap="10" 
-                         style="-fx-padding: 10;"
-                         AnchorPane.bottomAnchor="50.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                 <columnConstraints>
-                   <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-                   <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
-                 </columnConstraints>
-                 <rowConstraints>
-                   <RowConstraints maxHeight="439.0" minHeight="0.0" prefHeight="167.0" vgrow="SOMETIMES" />
-                   <RowConstraints maxHeight="439.0" minHeight="0.0" prefHeight="213.0" vgrow="SOMETIMES" />
-                   <RowConstraints maxHeight="348.0" minHeight="10.0" prefHeight="257.0" vgrow="SOMETIMES" />
-                 </rowConstraints>
+               <GridPane fx:id="previewGrid" hgap="10" style="-fx-padding: 10;" vgap="10" AnchorPane.bottomAnchor="50.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                </GridPane>
-               <HBox alignment="CENTER" spacing="20" prefHeight="40.0"
-                     AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
-                   <Button maxHeight="-Infinity" minHeight="-Infinity" mnemonicParsing="false"
-                           prefHeight="30.0" text="Take Snapshot (Enter)" onAction="#onTakeSnapshot"/>
+               <HBox alignment="CENTER" prefHeight="40.0" spacing="20" AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
+                   <Button maxHeight="-Infinity" minHeight="-Infinity" mnemonicParsing="false" onAction="#onTakeSnapshot" prefHeight="30.0" text="Take Snapshot (Enter)" />
                </HBox>
             </AnchorPane>
         </SplitPane>
