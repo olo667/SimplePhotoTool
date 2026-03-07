@@ -4,13 +4,18 @@ import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -27,12 +32,15 @@ public class FFmpegStreamService {
     // Port for HTTP server to serve HLS files
     private static final int BASE_PORT = 49152;
     private static final AtomicInteger portCounter = new AtomicInteger(0);
+    private static final Path LOG_DIRECTORY = Path.of(System.getProperty("user.home"), "SimplePhotoTool_logs");
     
     private final Camera camera;
     private final Settings settings;
     private final CameraStrategy strategy;
     private int port;
     private Path hlsDirectory;
+    private Path logFilePath;
+    private PrintWriter logFileWriter;
     private HttpServer httpServer;
     
     private Process ffmpegProcess;
@@ -50,10 +58,13 @@ public class FFmpegStreamService {
      * @param settings Application settings
      */
     public FFmpegStreamService(Camera camera, Settings settings) {
+        System.out.println("[FFmpegStreamService] Constructor called for '" + camera.getName() + 
+            "' - NO camera access yet, just allocating port");
         this.camera = camera;
         this.settings = settings;
         this.strategy = CameraStrategyFactory.getStrategy();
         this.port = findAvailablePort();
+        System.out.println("[FFmpegStreamService] Allocated port " + port + " for '" + camera.getName() + "'");
     }
     
     /**
@@ -126,7 +137,10 @@ public class FFmpegStreamService {
      * @return true if started successfully
      */
     public boolean start() {
+        System.out.println("[FFmpegStreamService] start() called for '" + camera.getName() + 
+            "' - THIS WILL ACCESS THE CAMERA");
         if (running.get()) {
+            System.out.println("[FFmpegStreamService] Already running, returning true");
             return true;
         }
         
@@ -137,6 +151,9 @@ public class FFmpegStreamService {
             hlsDirectory.toFile().deleteOnExit();
             
             System.out.println("HLS directory: " + hlsDirectory);
+            
+            // Create log file for FFmpeg output
+            createLogFile(sanitizedName);
             
             // Start HTTP server to serve HLS files
             startHttpServer();
@@ -151,7 +168,16 @@ public class FFmpegStreamService {
             System.out.println("HLS Path: " + hlsDirectory);
             System.out.println("HTTP Server: http://127.0.0.1:" + port);
             System.out.println("Command: " + String.join(" ", pb.command()));
+            System.out.println("Log file: " + logFilePath);
             System.out.println("===========================");
+            
+            // Also log to file
+            logToFile("=== FFmpeg Stream Start ===");
+            logToFile("Camera: " + camera.getName());
+            logToFile("HLS Path: " + hlsDirectory);
+            logToFile("HTTP Server: http://127.0.0.1:" + port);
+            logToFile("Command: " + String.join(" ", pb.command()));
+            logToFile("===========================");
             
             ffmpegProcess = pb.start();
             running.set(true);
@@ -166,9 +192,11 @@ public class FFmpegStreamService {
                             ffmpegOutput.add("[stdout] " + line);
                         }
                         System.out.println("[FFmpeg-" + camera.getName() + "-stdout] " + line);
+                        logToFile("[stdout] " + line);
                     }
                 } catch (Exception e) {
                     System.err.println("Error reading FFmpeg stdout: " + e.getMessage());
+                    logToFile("[ERROR] Error reading stdout: " + e.getMessage());
                 }
             });
             monitorThread.setDaemon(true);
@@ -187,6 +215,7 @@ public class FFmpegStreamService {
                             ffmpegOutput.add("[stderr] " + line);
                         }
                         System.out.println("[FFmpeg-" + camera.getName() + "-stderr] " + line);
+                        logToFile("[stderr] " + line);
                         
                         // Detect when FFmpeg starts writing HLS segments
                         // Look for "Opening" which indicates HLS segment file creation
@@ -203,6 +232,7 @@ public class FFmpegStreamService {
                     }
                 } catch (Exception e) {
                     System.err.println("Error reading FFmpeg stderr: " + e.getMessage());
+                    logToFile("[ERROR] Error reading stderr: " + e.getMessage());
                 }
                 
                 // Check if process ended unexpectedly
@@ -213,6 +243,11 @@ public class FFmpegStreamService {
                     System.err.println("Exit code: " + exitCode);
                     System.err.println("Collected output lines: " + ffmpegOutput.size());
                     System.err.println("============================");
+                    
+                    logToFile("=== FFmpeg Process Ended ===");
+                    logToFile("Exit code: " + exitCode);
+                    logToFile("Collected output lines: " + ffmpegOutput.size());
+                    logToFile("============================");
                     
                     if (exitCode != 0 && onErrorCallback != null) {
                         onErrorCallback.run();
@@ -266,6 +301,54 @@ public class FFmpegStreamService {
             }
         }
         System.out.println("HLS playlist wait timeout, proceeding anyway");
+    }
+    
+    /**
+     * Creates a log file for FFmpeg output.
+     */
+    private void createLogFile(String sanitizedCameraName) {
+        try {
+            // Create log directory if it doesn't exist
+            Files.createDirectories(LOG_DIRECTORY);
+            
+            // Create log file with timestamp
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String logFileName = "ffmpeg_" + sanitizedCameraName + "_" + timestamp + ".log";
+            logFilePath = LOG_DIRECTORY.resolve(logFileName);
+            
+            logFileWriter = new PrintWriter(new BufferedWriter(new FileWriter(logFilePath.toFile(), true)));
+            logToFile("=== FFmpeg Log Started at " + LocalDateTime.now() + " ===");
+            logToFile("Camera: " + camera.getName());
+            logToFile("Device ID: " + camera.getDeviceId());
+            
+            System.out.println("[FFmpegStreamService] Log file created: " + logFilePath);
+        } catch (Exception e) {
+            System.err.println("[FFmpegStreamService] Failed to create log file: " + e.getMessage());
+            logFileWriter = null;
+        }
+    }
+    
+    /**
+     * Writes a line to the log file with timestamp.
+     */
+    private void logToFile(String message) {
+        if (logFileWriter != null) {
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss.SSS"));
+            logFileWriter.println("[" + timestamp + "] " + message);
+            logFileWriter.flush();
+        }
+    }
+    
+    /**
+     * Closes the log file writer.
+     */
+    private void closeLogFile() {
+        if (logFileWriter != null) {
+            logToFile("=== FFmpeg Log Ended at " + LocalDateTime.now() + " ===");
+            logFileWriter.close();
+            logFileWriter = null;
+            System.out.println("[FFmpegStreamService] Log file closed: " + logFilePath);
+        }
     }
     
     /**
@@ -334,10 +417,12 @@ public class FFmpegStreamService {
      * Stops the FFmpeg streaming process and HTTP server.
      */
     public void stop() {
+        System.out.println("[FFmpegStreamService] stop() called for '" + camera.getName() + "'");
         running.set(false);
         
         // Stop HTTP server
         if (httpServer != null) {
+            System.out.println("[FFmpegStreamService] Stopping HTTP server on port " + port);
             httpServer.stop(0);
             httpServer = null;
             System.out.println("HTTP server stopped");
@@ -379,6 +464,9 @@ public class FFmpegStreamService {
         
         // Clean up HLS directory
         cleanupHlsDirectory();
+        
+        // Close log file
+        closeLogFile();
         
         ffmpegProcess = null;
         monitorThread = null;

@@ -2,6 +2,7 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
@@ -11,7 +12,7 @@
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.example.simplephototool.SettingsDialogController"
-      spacing="15" prefWidth="500" prefHeight="300"
+      spacing="15" prefWidth="500" prefHeight="350"
       styleClass="settings-dialog">
 
     <padding>
@@ -39,6 +40,16 @@
         <Label text="Default Resolution:" styleClass="label-header"/>
         <ComboBox fx:id="defaultResolutionComboBox" maxWidth="Infinity"/>
         <Label text="Resolution used for cameras without a custom resolution set" style="-fx-font-size: 10px; -fx-text-fill: gray;"/>
+    </VBox>
+
+    <!-- Hardware Encoding Section -->
+    <VBox spacing="5">
+        <Label text="Preview Encoding:" styleClass="label-header"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <CheckBox fx:id="hardwareEncodingCheckbox" text="Enable Hardware Encoding"/>
+            <Label fx:id="encoderStatusLabel" text="Detecting..." style="-fx-font-size: 10px; -fx-text-fill: gray;"/>
+        </HBox>
+        <Label text="Auto-selects best available encoder (NVENC, QuickSync, or AMF)" style="-fx-font-size: 10px; -fx-text-fill: gray;"/>
     </VBox>
 
     <!-- Buttons -->

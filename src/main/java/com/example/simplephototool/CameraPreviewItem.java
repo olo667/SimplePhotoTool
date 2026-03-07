@@ -58,6 +58,8 @@ public class CameraPreviewItem extends VBox {
      * @param size The tile size
      */
     public CameraPreviewItem(Camera camera, Settings settings, TileSize size) {
+        System.out.println("[CameraPreviewItem] Constructor called for '" + camera.getName() + 
+            "' - NO camera access yet, just creating UI component");
         this.camera = camera;
         this.settings = settings;
         this.tileWidth = size.getWidth();
@@ -132,7 +134,15 @@ public class CameraPreviewItem extends VBox {
      * Starts the camera preview.
      */
     public void startPreview() {
+        System.out.println("[CameraPreviewItem] startPreview() called for '" + camera.getName() + 
+            "' - running=" + running.get());
+        // Print stack trace to identify caller
+        System.out.println("[CameraPreviewItem] Stack trace:");
+        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+            System.out.println("    " + element);
+        }
         if (running.get()) {
+            System.out.println("[CameraPreviewItem] Already running, returning early");
             return;
         }
         
@@ -141,6 +151,7 @@ public class CameraPreviewItem extends VBox {
             statusLabel.setVisible(true);
         });
         
+        System.out.println("[CameraPreviewItem] Creating FFmpegStreamService for '" + camera.getName() + "'");
         // Create and start FFmpeg stream service
         streamService = new FFmpegStreamService(camera, settings);
         
@@ -292,10 +303,12 @@ public class CameraPreviewItem extends VBox {
      * Stops the camera preview.
      */
     public void stopPreview() {
+        System.out.println("[CameraPreviewItem] stopPreview() called for '" + camera.getName() + "'");
         running.set(false);
         
         // Stop media player
         if (mediaPlayer != null) {
+            System.out.println("[CameraPreviewItem] Stopping and disposing MediaPlayer");
             mediaPlayer.stop();
             mediaPlayer.dispose();
             mediaPlayer = null;
@@ -306,16 +319,22 @@ public class CameraPreviewItem extends VBox {
         
         // Stop FFmpeg stream
         if (streamService != null) {
+            System.out.println("[CameraPreviewItem] Stopping FFmpegStreamService");
             streamService.stop();
             streamService = null;
+        } else {
+            System.out.println("[CameraPreviewItem] No streamService to stop");
         }
+        System.out.println("[CameraPreviewItem] stopPreview() completed for '" + camera.getName() + "'");
     }
     
     /**
      * Disposes of all resources.
      */
     public void dispose() {
+        System.out.println("[CameraPreviewItem] dispose() called for '" + camera.getName() + "'");
         stopPreview();
+        System.out.println("[CameraPreviewItem] dispose() completed for '" + camera.getName() + "'");
     }
     
     /**

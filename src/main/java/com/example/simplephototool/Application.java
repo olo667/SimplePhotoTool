@@ -17,10 +17,16 @@ public class Application extends javafx.application.Application {
         // Get controller to call snapshot method
         MainController controller = fxmlLoader.getController();
         
-        // Add keyboard shortcut for Enter key
+        // Add keyboard shortcuts for Enter key
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
             if (event.getCode() == KeyCode.ENTER) {
-                controller.onTakeSnapshot();
+                if (event.isShiftDown()) {
+                    // Shift+Enter: Snapshot and start all previews
+                    controller.onTakeSnapshotAndStartPreviews();
+                } else {
+                    // Enter: Just take snapshot
+                    controller.onTakeSnapshot();
+                }
                 event.consume();
             }
         });

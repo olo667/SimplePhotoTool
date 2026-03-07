@@ -12,6 +12,7 @@ public class Settings {
     private String defaultResolution;
     private Boolean verboseOutput;
     private List<Camera> cameras;
+    private Boolean hardwareEncodingEnabled;
 
     /** Common resolution options available for cameras */
     public static final String[] RESOLUTION_OPTIONS = {
@@ -33,6 +34,7 @@ public class Settings {
         this.defaultResolution = DEFAULT_RESOLUTION;
         this.verboseOutput = false;
         this.cameras = new ArrayList<>();
+        this.hardwareEncodingEnabled = false;
     }
 
     public String getSnapshotOutputDirectory() {
@@ -96,5 +98,27 @@ public class Settings {
 
     public void setVerboseOutput(boolean verboseOutput) {
         this.verboseOutput = verboseOutput;
+    }
+    
+    public boolean isHardwareEncodingEnabled() {
+        return hardwareEncodingEnabled != null && hardwareEncodingEnabled;
+    }
+    
+    public void setHardwareEncodingEnabled(boolean enabled) {
+        this.hardwareEncodingEnabled = enabled;
+    }
+    
+    /**
+     * Gets the encoder type based on current settings.
+     * If hardware encoding is enabled, auto-selects best available.
+     * If disabled, returns SOFTWARE.
+     *
+     * @return The encoder type to use
+     */
+    public HardwareEncoderFactory.EncoderType getEncoderType() {
+        if (!isHardwareEncodingEnabled()) {
+            return HardwareEncoderFactory.EncoderType.SOFTWARE;
+        }
+        return HardwareEncoderFactory.getBestAvailableEncoder();
     }
 }

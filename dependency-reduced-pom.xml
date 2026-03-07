@@ -4,7 +4,7 @@
   <groupId>com.example</groupId>
   <artifactId>SimplePhotoTool</artifactId>
   <name>SimplePhotoTool</name>
-  <version>1.1-SNAPSHOT</version>
+  <version>1.2-SNAPSHOT</version>
   <build>
     <plugins>
       <plugin>

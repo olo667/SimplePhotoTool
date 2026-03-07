@@ -158,21 +158,17 @@ public class WindowsCameraStrategy implements CameraStrategy {
         command.add("scale=640:-2");
         command.add("-r");
         command.add("15");
-        // Video encoding - H.264 baseline profile
-        command.add("-c:v");
-        command.add("libx264");
-        command.add("-preset");
-        command.add("ultrafast");
-        command.add("-tune");
-        command.add("zerolatency");
-        command.add("-profile:v");
-        command.add("baseline");
-        command.add("-level");
-        command.add("3.0");
-        command.add("-pix_fmt");
-        command.add("yuv420p");
+        
+        // Get encoder arguments from factory based on settings
+        HardwareEncoderFactory.EncoderType encoderType = settings.getEncoderType();
+        System.out.println("[WindowsCameraStrategy] Using encoder: " + encoderType.getDisplayName());
+        List<String> encoderArgs = HardwareEncoderFactory.getEncoderArguments(encoderType);
+        command.addAll(encoderArgs);
+        
+        // GOP size for low latency
         command.add("-g");
         command.add("15");
+        
         // Audio encoding - AAC (required by JavaFX HLS)
         command.add("-c:a");
         command.add("aac");

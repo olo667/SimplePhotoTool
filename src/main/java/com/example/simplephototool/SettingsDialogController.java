@@ -2,13 +2,16 @@ package com.example.simplephototool;
 
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Controller for the settings dialog.
@@ -22,6 +25,12 @@ public class SettingsDialogController {
 
     @FXML
     private ComboBox<String> defaultResolutionComboBox;
+    
+    @FXML
+    private CheckBox hardwareEncodingCheckbox;
+    
+    @FXML
+    private Label encoderStatusLabel;
 
     private Settings settings;
     private Stage dialogStage;
@@ -34,6 +43,22 @@ public class SettingsDialogController {
     private void initialize() {
         // Initialize resolution combo box with available options
         defaultResolutionComboBox.setItems(FXCollections.observableArrayList(Settings.RESOLUTION_OPTIONS));
+        
+        // Detect available hardware encoders in background and update status label
+        new Thread(() -> {
+            List<HardwareEncoderFactory.EncoderType> encoders = HardwareEncoderFactory.detectAvailableEncoders();
+            HardwareEncoderFactory.EncoderType best = HardwareEncoderFactory.getBestAvailableEncoder();
+            javafx.application.Platform.runLater(() -> {
+                int hwCount = encoders.size() - 1; // Subtract software encoder
+                if (hwCount > 0) {
+                    encoderStatusLabel.setText("Best available: " + best.getDisplayName());
+                    encoderStatusLabel.setStyle("-fx-text-fill: green; -fx-font-size: 10px;");
+                } else {
+                    encoderStatusLabel.setText("No hardware encoders detected");
+                    encoderStatusLabel.setStyle("-fx-text-fill: orange; -fx-font-size: 10px;");
+                }
+            });
+        }).start();
     }
 
     /**
@@ -62,6 +87,9 @@ public class SettingsDialogController {
         } else {
             defaultResolutionComboBox.setValue(Settings.DEFAULT_RESOLUTION);
         }
+        
+        // Set hardware encoding checkbox
+        hardwareEncodingCheckbox.setSelected(settings.isHardwareEncodingEnabled());
     }
 
     /**
@@ -101,6 +129,7 @@ public class SettingsDialogController {
         settings.setSnapshotOutputDirectory(outputDirectoryField.getText());
         settings.setFilenamePattern(filenamePatternField.getText());
         settings.setDefaultResolution(defaultResolutionComboBox.getValue());
+        settings.setHardwareEncodingEnabled(hardwareEncodingCheckbox.isSelected());
         
         try {
             SettingsManager.saveSettings(settings);

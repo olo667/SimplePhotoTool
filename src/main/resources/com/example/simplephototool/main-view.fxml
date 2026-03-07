@@ -34,6 +34,7 @@
                </GridPane>
                <HBox alignment="CENTER" prefHeight="40.0" spacing="20" AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
                    <Button maxHeight="-Infinity" minHeight="-Infinity" mnemonicParsing="false" onAction="#onTakeSnapshot" prefHeight="30.0" text="Take Snapshot (Enter)" />
+                   <Button maxHeight="-Infinity" minHeight="-Infinity" mnemonicParsing="false" onAction="#onTakeSnapshotAndStartPreviews" prefHeight="30.0" text="Snapshot + Start Previews (Shift+Enter)" />
                </HBox>
             </AnchorPane>
         </SplitPane>

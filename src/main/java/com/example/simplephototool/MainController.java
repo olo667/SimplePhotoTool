@@ -9,6 +9,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
@@ -73,6 +75,26 @@ public class MainController {
                 rebuildPreviewGrid();
             });
         }
+    }
+    
+    /**
+     * Sets up keyboard shortcuts. Must be called after the scene is set.
+     * @param scene The scene to add key handlers to
+     */
+    public void setupKeyboardShortcuts(Scene scene) {
+        scene.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                if (event.isShiftDown()) {
+                    // Shift+Enter: Snapshot and start previews
+                    onTakeSnapshotAndStartPreviews();
+                    event.consume();
+                } else {
+                    // Enter: Just take snapshot
+                    onTakeSnapshot();
+                    event.consume();
+                }
+            }
+        });
     }
 
     /**
@@ -277,11 +299,11 @@ public class MainController {
 
     private void onPreviewSelected(Camera camera) {
         if (camera == null) return;
-        // Toggle preview for the selected camera
-        PreviewTile tile = previewManager.getTile(camera.getDeviceId());
-        if (tile != null) {
-            tile.togglePreview();
-        }
+        // Checkbox only controls whether camera appears in preview grid
+        // Preview is started by clicking on the tile, not by the checkbox
+        System.out.println("[MainController] Preview checkbox toggled for: " + camera.getName() + 
+            " - previewEnabled=" + camera.isPreviewEnabled());
+        // Grid is automatically rebuilt by the property listener in initialize()
     }
 
     @FXML
@@ -328,6 +350,42 @@ public class MainController {
                     }
                 });
             }
+        }).start();
+    }
+    
+    /**
+     * Takes a snapshot and then starts all previews for cameras with preview enabled.
+     */
+    @FXML
+    public void onTakeSnapshotAndStartPreviews() {
+        // Stop all previews before taking snapshot
+        previewManager.stopAllPreviews();
+        
+        // Run snapshot capture in background thread
+        new Thread(() -> {
+            // Give the devices time to release
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            
+            int count = SnapshotService.captureSnapshots(cameras, settings);
+            System.out.println("Captured " + count + " snapshots.");
+            
+            // Wait a bit then start all previews
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            
+            javafx.application.Platform.runLater(() -> {
+                previewManager.startAllPreviews();
+                System.out.println("Started all previews after snapshot.");
+            });
         }).start();
     }
 

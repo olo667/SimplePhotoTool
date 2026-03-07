@@ -138,6 +138,12 @@ public class PreviewTile extends VBox {
      * Starts the camera preview using FFmpeg.
      */
     public void startPreview() {
+        System.out.println("[PreviewTile] startPreview() called for '" + camera.getName() + "'");
+        // Print stack trace to identify caller
+        System.out.println("[PreviewTile] Stack trace:");
+        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+            System.out.println("    " + element);
+        }
         if (running.get()) {
             return;
         }

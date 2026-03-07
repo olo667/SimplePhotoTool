@@ -48,12 +48,17 @@ public class PreviewManager {
      * Refreshes the preview items based on cameras with preview enabled.
      */
     public void refresh() {
+        System.out.println("[PreviewManager] refresh() called - cameras count: " + cameras.size());
+        
         // Create preview items for cameras with preview enabled that don't have one yet
         for (Camera camera : cameras) {
             String deviceId = camera.getDeviceId();
             
             // Listen to previewEnabled property changes
             camera.previewEnabledProperty().addListener((obs, wasEnabled, isEnabled) -> {
+                System.out.println("[PreviewManager] previewEnabled changed for '" + camera.getName() + 
+                    "': " + wasEnabled + " -> " + isEnabled + 
+                    " (previewItems.containsKey=" + previewItems.containsKey(deviceId) + ")");
                 if (isEnabled && !previewItems.containsKey(deviceId)) {
                     createPreviewItem(camera);
                 } else if (!isEnabled && previewItems.containsKey(deviceId)) {
@@ -85,17 +90,24 @@ public class PreviewManager {
      * Creates a preview item for the specified camera.
      */
     private void createPreviewItem(Camera camera) {
+        System.out.println("[PreviewManager] createPreviewItem() for '" + camera.getName() + 
+            "' deviceId=" + camera.getDeviceId());
         CameraPreviewItem item = new CameraPreviewItem(camera, settings, currentTileSize);
         previewItems.put(camera.getDeviceId(), item);
+        System.out.println("[PreviewManager] CameraPreviewItem created and stored - total items: " + previewItems.size());
     }
     
     /**
      * Removes and disposes a preview item.
      */
     private void removePreviewItem(String deviceId) {
+        System.out.println("[PreviewManager] removePreviewItem() for deviceId=" + deviceId);
         CameraPreviewItem item = previewItems.remove(deviceId);
         if (item != null) {
+            System.out.println("[PreviewManager] Disposing CameraPreviewItem for '" + item.getCamera().getName() + "'");
             item.dispose();
+        } else {
+            System.out.println("[PreviewManager] WARNING: No preview item found to remove!");
         }
     }
     
